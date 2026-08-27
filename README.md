@@ -72,6 +72,25 @@ historical price/volume data, shown as such in the app itself.
   screen shows a prominent "Demo data — not live prices" banner in that
   case, and the API response carries `dataSource: "demo"`.
 
+## Deploying (Railway, or any single-service Node host)
+
+The app deploys as **one service**: the Express server also serves the built
+frontend (`client/dist`) as static files, so there's no separate frontend
+service or root-directory juggling needed.
+
+- Root `package.json` defines `build` (installs + builds `client/`, installs
+  `server/`) and `start` (`node server/index.js`), and `railway.json` points
+  Railway's Nixpacks builder at those explicitly.
+- In the Railway dashboard, the service's **Root Directory should be the
+  repo root** (not `client/` or `server/`) — if it was previously set to
+  `client/`, that's what causes Railway to fall back to its built-in static
+  file server (the `fileserver.(*FileServer).notFound` 404s), since it never
+  sees a backend to run. Clear/reset it to the repo root and redeploy.
+- Railway sets `PORT` automatically; `server/index.js` already reads
+  `process.env.PORT`.
+- No other environment variables are required — Yahoo Finance is called
+  directly from the server at request time.
+
 ## Icon
 
 `client/public/icon.svg` — green gradient (Saudi-market association) with

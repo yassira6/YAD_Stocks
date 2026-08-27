@@ -1,0 +1,12 @@
+{
+  "name": "yad-stocks",
+  "private": true,
+  "version": "1.0.0",
+  "description": "YAD Stocks — TASI search, price charts, and money-flow analysis (bilingual AR/EN).",
+  "scripts": {
+    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server",
+    "start": "node server/index.js",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client"
+  }
+}
