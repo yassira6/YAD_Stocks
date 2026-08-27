@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
+import { useCompanies } from "../lib/CompaniesContext";
 import { searchCompanies, type SearchResult } from "../lib/search";
 
 interface Props {
@@ -8,12 +9,13 @@ interface Props {
 
 export function SearchBar({ onSelect }: Props) {
   const { t, lang } = useLanguage();
+  const { companies } = useCompanies();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => searchCompanies(query), [query]);
+  const results = useMemo(() => searchCompanies(query, companies), [query, companies]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -31,7 +33,9 @@ export function SearchBar({ onSelect }: Props) {
 
   function choose(result: SearchResult) {
     onSelect(result.code);
-    setQuery(result.company ? (lang === "ar" ? result.company.nameAr : result.company.nameEn) : result.code);
+    setQuery(
+      result.company ? (lang === "ar" ? result.company.nameAr || result.company.nameEn : result.company.nameEn) : result.code
+    );
     setOpen(false);
   }
 
@@ -122,14 +126,16 @@ export function SearchBar({ onSelect }: Props) {
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-[15px] font-medium text-white">
-                        {r.isDirect ? t.directCodeResult : lang === "ar" ? r.company!.nameAr : r.company!.nameEn}
+                        {r.isDirect
+                          ? t.directCodeResult
+                          : lang === "ar"
+                          ? r.company!.nameAr || r.company!.nameEn
+                          : r.company!.nameEn}
                       </span>
                       <span className="block truncate text-xs text-ink-300">
                         {r.isDirect
                           ? t.directCodeSub
-                          : lang === "ar"
-                          ? r.company!.sectorAr
-                          : r.company!.sectorEn}
+                          : (lang === "ar" ? r.company!.sectorAr : r.company!.sectorEn) || ""}
                       </span>
                     </span>
                     <span className="shrink-0 rounded-lg bg-ink-700 px-2 py-1 font-mono text-xs font-semibold text-brand-300">

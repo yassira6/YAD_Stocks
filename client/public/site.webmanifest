@@ -1,6 +1,6 @@
 {
-  "name": "YAD Stocks — TASI",
-  "short_name": "YAD Stocks",
+  "name": "MyShare — TASI",
+  "short_name": "MyShare",
   "description": "Search Tadawul (TASI) companies, track prices and get technical + money-flow analysis.",
   "start_url": "/",
   "display": "standalone",

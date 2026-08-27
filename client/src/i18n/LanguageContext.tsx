@@ -10,7 +10,7 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-const STORAGE_KEY = "yad-stocks-lang";
+const STORAGE_KEY = "myshare-lang";
 
 function detectInitialLang(): Lang {
   try {

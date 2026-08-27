@@ -16,7 +16,7 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
   const changePct = quote.previousClose ? change / quote.previousClose : 0;
   const isUp = change >= 0;
 
-  const name = company ? (lang === "ar" ? company.nameAr : company.nameEn) : quote.code;
+  const name = company ? (lang === "ar" ? company.nameAr || company.nameEn : company.nameEn) : quote.code;
   const sector = company ? (lang === "ar" ? company.sectorAr : company.sectorEn) : null;
 
   return (

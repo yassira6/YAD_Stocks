@@ -1,9 +1,12 @@
 export interface Company {
   code: string;
   nameEn: string;
-  nameAr: string;
-  sectorEn: string;
-  sectorAr: string;
+  // Dynamically-discovered companies (looked up by a raw code that wasn't in
+  // the curated starter directory) come from Yahoo's metadata, which has no
+  // Arabic name or sector — those fields are null until manually corrected.
+  nameAr: string | null;
+  sectorEn: string | null;
+  sectorAr: string | null;
 }
 
 export interface Bar {
@@ -80,4 +83,21 @@ export interface QuoteResponse {
   analysis: Analysis;
   dataSource: "live" | "demo";
   liveError: string | null;
+}
+
+export type AlertDirection = "buy" | "sell";
+export type AlertStatus = "active" | "triggered" | "cancelled";
+
+export interface PriceAlert {
+  id: string;
+  code: string;
+  email: string;
+  direction: AlertDirection;
+  targetPrice: number;
+  lang: "en" | "ar";
+  status: AlertStatus;
+  createdAt: number;
+  triggeredAt: number | null;
+  triggeredPrice: number | null;
+  lastCheckedAt: number | null;
 }

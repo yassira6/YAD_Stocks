@@ -1,12 +1,9 @@
-import companies from "../data/companies.json";
 import type { Company } from "../types";
-
-const ALL_COMPANIES = companies as Company[];
 
 // Normalize Arabic text so common alternate letter forms match each other
 // (e.g. أ/إ/آ -> ا) and strip diacritics, so "الراجحي" matches "ﺍﻟﺮﺍﺟﺤﻲ"-style input too.
-function normalize(str: string): string {
-  return str
+function normalize(str: string | null | undefined): string {
+  return (str || "")
     .toLowerCase()
     .replace(/[ً-ْ]/g, "") // Arabic diacritics
     .replace(/[أإآ]/g, "ا")
@@ -24,14 +21,14 @@ export interface SearchResult {
 
 const CODE_RE = /^\d{2,5}$/;
 
-export function searchCompanies(query: string, limit = 8): SearchResult[] {
+export function searchCompanies(query: string, companies: Company[], limit = 8): SearchResult[] {
   const raw = query.trim();
   if (!raw) return [];
 
   const q = normalize(raw);
   const results: SearchResult[] = [];
 
-  for (const company of ALL_COMPANIES) {
+  for (const company of companies) {
     const nameEn = normalize(company.nameEn);
     const nameAr = normalize(company.nameAr);
     const codeMatch = company.code.startsWith(raw);

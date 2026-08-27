@@ -66,6 +66,7 @@ export async function fetchHistory(code, { range = "6mo", interval = "1d" } = {}
     code: String(code).trim().toUpperCase(),
     currency: meta.currency || "SAR",
     exchangeName: meta.exchangeName || "Saudi Exchange",
+    displayName: meta.longName || meta.shortName || null,
     regularMarketPrice: meta.regularMarketPrice ?? series.at(-1)?.close ?? null,
     previousClose: meta.chartPreviousClose ?? meta.previousClose ?? series.at(-2)?.close ?? null,
     regularMarketTime: meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now(),

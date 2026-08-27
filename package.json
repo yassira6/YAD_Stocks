@@ -1,8 +1,8 @@
 {
-  "name": "yad-stocks",
+  "name": "myshare",
   "private": true,
   "version": "1.0.0",
-  "description": "YAD Stocks — TASI search, price charts, and money-flow analysis (bilingual AR/EN).",
+  "description": "MyShare — TASI search, price charts, and money-flow analysis (bilingual AR/EN).",
   "engines": {
     "node": ">=22.12"
   },

@@ -1,3 +1,9 @@
 node_modules
 *.log
 .env
+
+# Local SQLite DB (runtime data — never the seed data/companies.json, which is tracked)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
