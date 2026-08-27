@@ -443,11 +443,17 @@ export function analyzeSeries(series) {
   const roundedScore = Math.round(clamp(score, -100, 100));
   const verdict = verdictFromScore(roundedScore);
 
-  // ---- Price targets: fair value + buy/sell zones from trend & volatility ----
-  // Not a fundamental valuation (no earnings/cash-flow model) — a statistical
-  // read: "fair value" is the blended short/medium trend (SMA20 & SMA50), and
-  // the buy/sell targets sit one Bollinger standard deviation below/above it,
-  // i.e. the same volatility band already used for the Bollinger signal above.
+  // ---- Price targets: fair value + buy/sell zones from trend, volatility & signal strength ----
+  // Not a fundamental valuation (no earnings/cash-flow model) — a statistical read.
+  // "Fair value" is the blended short/medium trend (SMA20 & SMA50), shown as context.
+  // The buy/sell targets are anchored on the CURRENT price (not fair value) and scale
+  // with the composite score: a stronger buy signal stretches the upside/sell target
+  // further above the current price, and a stronger sell signal stretches the
+  // downside/re-entry target further below it. This keeps the targets consistent with
+  // the verdict — earlier versions derived targets only from fair value ± volatility,
+  // which could put a "Strong Buy" stock's sell target barely above its current price
+  // (fair value sits near/under price in a strong uptrend, since price runs above its
+  // own moving averages), contradicting the recommendation shown right next to it.
   let priceTargets = null;
   {
     const s20 = sma20[last];
@@ -455,10 +461,15 @@ export function analyzeSeries(series) {
     const upper = bb.upper[last];
     const mid = bb.mid[last];
     const sd20 = upper != null && mid != null ? upper - mid : null;
-    if (s20 != null && s50 != null && sd20 != null) {
+    if (s20 != null && s50 != null && sd20 != null && price) {
       const fairValue = (s20 + s50) / 2;
-      const targetBuy = fairValue - sd20;
-      const targetSell = fairValue + sd20;
+      const baseVolatilityPct = sd20 / price;
+      const bullishness = Math.max(roundedScore, 0); // 0..100
+      const bearishness = Math.max(-roundedScore, 0); // 0..100
+      const upsidePct = baseVolatilityPct * (1 + bullishness / 100);
+      const downsidePct = baseVolatilityPct * (1 + bearishness / 100);
+      const targetBuy = price * (1 - downsidePct);
+      const targetSell = price * (1 + upsidePct);
       const pct = (target) => (target - price) / price;
       priceTargets = {
         fairValue,
