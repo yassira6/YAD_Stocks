@@ -12,9 +12,11 @@ export async function fetchQuote(code: string): Promise<QuoteResponse> {
   return unwrap(await fetch(`/api/quote/${encodeURIComponent(code)}`));
 }
 
+// Alerts are always tied to the signed-in session (credentials: "same-origin"
+// sends the session cookie); the server derives the owner/email itself.
+
 export async function createAlert(input: {
   code: string;
-  email: string;
   direction: AlertDirection;
   targetPrice: number;
   lang: "en" | "ar";
@@ -22,16 +24,17 @@ export async function createAlert(input: {
   return unwrap(
     await fetch("/api/alerts", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     })
   );
 }
 
-export async function fetchAlertsByEmail(email: string): Promise<PriceAlert[]> {
-  return unwrap(await fetch(`/api/alerts?email=${encodeURIComponent(email)}`));
+export async function fetchMyAlerts(): Promise<PriceAlert[]> {
+  return unwrap(await fetch("/api/alerts", { credentials: "same-origin" }));
 }
 
-export async function cancelAlert(id: string, email: string): Promise<void> {
-  await unwrap(await fetch(`/api/alerts/${encodeURIComponent(id)}?email=${encodeURIComponent(email)}`, { method: "DELETE" }));
+export async function cancelAlert(id: string): Promise<void> {
+  await unwrap(await fetch(`/api/alerts/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" }));
 }

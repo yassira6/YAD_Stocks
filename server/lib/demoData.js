@@ -23,10 +23,9 @@ function mulberry32(seed) {
   };
 }
 
-export function generateDemoHistory(code) {
+export function generateDemoHistory(code, { days = 126 } = {}) {
   const seed = hashSeed(String(code));
   const rand = mulberry32(seed);
-  const days = 126; // ~6 months of trading days
   const basePrice = 8 + (seed % 180); // plausible SAR range
   let price = basePrice;
   let trendBias = (rand() - 0.5) * 0.15; // slow drift, differs per company

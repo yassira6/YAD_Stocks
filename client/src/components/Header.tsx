@@ -1,30 +1,38 @@
+import { useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
-import type { View } from "../App";
+import { useAuth } from "../lib/AuthContext";
+import { navigateTo, type View } from "../lib/hashRoute";
 
 interface Props {
   view: View;
-  onNavigate: (view: View) => void;
 }
 
-export function Header({ view, onNavigate }: Props) {
+export function Header({ view }: Props) {
   const { t, lang, toggleLang } = useLanguage();
+  const { user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 border-b border-ink-700/60 bg-ink-950/85 backdrop-blur supports-[backdrop-filter]:bg-ink-950/70">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigateTo("stock")}
+          className="flex items-center gap-3 rounded-xl text-start transition hover:opacity-90"
+          aria-label={t.appName}
+        >
           <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-brand-900/40 sm:h-10 sm:w-10" />
           <div className="leading-tight">
             <h1 className="text-base font-bold tracking-tight text-white sm:text-lg">{t.appName}</h1>
             <p className="hidden text-xs text-ink-300 sm:block">{t.tagline}</p>
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-2">
           <nav className="flex items-center gap-1 rounded-full border border-ink-700 bg-ink-850/70 p-1">
             <button
               type="button"
-              onClick={() => onNavigate("stock")}
+              onClick={() => navigateTo("stock")}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 view === "stock" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
               }`}
@@ -33,13 +41,24 @@ export function Header({ view, onNavigate }: Props) {
             </button>
             <button
               type="button"
-              onClick={() => onNavigate("alerts")}
+              onClick={() => navigateTo("alerts")}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                 view === "alerts" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
               }`}
             >
               {t.navAlerts}
             </button>
+            {user?.isAdmin && (
+              <button
+                type="button"
+                onClick={() => navigateTo("admin")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                  view === "admin" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
+                }`}
+              >
+                {t.navAdmin}
+              </button>
+            )}
           </nav>
 
           <button
@@ -59,6 +78,50 @@ export function Header({ view, onNavigate }: Props) {
             </svg>
             {lang === "en" ? "العربية" : "English"}
           </button>
+
+          {user ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-full border border-ink-600 bg-ink-800/70 py-1 ps-1 pe-3 text-sm font-medium text-ink-100 transition hover:border-brand-500"
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt="" className="h-6 w-6 rounded-full" referrerPolicy="no-referrer" />
+                ) : (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                    {(user.name || user.email)[0]?.toUpperCase()}
+                  </span>
+                )}
+                <span className="max-w-[10ch] truncate">{user.name || user.email}</span>
+              </button>
+              {menuOpen && (
+                <div className="absolute end-0 z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-2xl shadow-black/50">
+                  <p className="truncate border-b border-ink-700 px-4 py-2.5 text-xs text-ink-300">
+                    {t.signedInAs} <span className="text-ink-100">{user.email}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      logout();
+                    }}
+                    className="block w-full px-4 py-2.5 text-start text-sm text-ink-100 transition hover:bg-ink-800"
+                  >
+                    {t.logout}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigateTo("login")}
+              className="rounded-full bg-brand-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-500"
+            >
+              {t.navLogin}
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -3,17 +3,20 @@
 A bilingual (Arabic-default/English) web app for the Saudi Exchange (Tadawul /
 TASI): search companies by code or name as you type, view the latest price
 and a one-month candlestick chart, get a technical + money-flow buy/sell/hold
-analysis with price targets, and set email alerts for a buy/sell price you
-want to hit.
+analysis with price targets, and — once signed in with Google or Apple — set
+email alerts for a buy/sell price you want to hit. The account that signs in
+with the configured admin email gets an Admin page listing every user and
+every alert in the system.
 
 ## Project layout
 
 - `client/` — React + TypeScript + Tailwind frontend (Vite), charts via
   `lightweight-charts`.
 - `server/` — Express API that proxies Yahoo Finance for Tadawul tickers
-  (`CODE.SR`), runs the technical/money-flow analysis engine, and owns a
-  SQLite database (`server/lib/db.js`, Node's built-in `node:sqlite`) for the
-  dynamic company directory and price alerts.
+  (`CODE.SR`), runs the technical/money-flow analysis engine, owns a SQLite
+  database (`server/lib/db.js`, Node's built-in `node:sqlite`) for the
+  dynamic company directory/alerts/users, and handles Google/Apple sign-in
+  (`server/lib/authRoutes.js`, OpenID Connect via `openid-client`).
 
 ## Running locally
 
@@ -90,21 +93,60 @@ historical price/volume data, shown as such in the app itself.
   screen shows a prominent "Demo data — not live prices" banner in that
   case, and the API response carries `dataSource: "demo"`.
 
+## Sign-in (Google & Apple) and the admin account
+
+The Alerts and Admin pages require signing in — no passwords, only "Continue
+with Google" / "Continue with Apple" (server-side OAuth 2.0 / OIDC code flow
++ PKCE via `openid-client`; session is an opaque random token in an httpOnly
+cookie, looked up against the `sessions` table, not a JWT). **Whichever
+provider isn't configured just shows a "not configured" message on the login
+button** — the app runs fine with zero, one, or both set up.
+
+The account that signs in with the email in `ADMIN_EMAIL` (default
+`yassira6@gmail.com`, case-insensitive, checked on every login regardless of
+which provider they used) gets `is_admin` and the Admin nav tab —
+`/api/admin/*` rejects everyone else with 403.
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for Google sign-in | From a Google Cloud Console OAuth 2.0 Client ID (Web application). Authorized redirect URI: `{APP_URL}/auth/google/callback`. |
+| `APPLE_CLIENT_ID` | for Apple sign-in | Your Apple **Services ID** (not the App ID), e.g. `com.yourteam.myshare.web`. |
+| `APPLE_TEAM_ID` | for Apple sign-in | Your Apple Developer Team ID. |
+| `APPLE_KEY_ID` | for Apple sign-in | The Key ID of a "Sign in with Apple" key you create in the Apple Developer portal. |
+| `APPLE_PRIVATE_KEY` | for Apple sign-in | The full contents of the `.p8` private key downloaded when creating that key (`\n`-escaped is fine if set via a single-line env var UI). Used to sign a fresh ES256 client-secret JWT on every login — Apple doesn't accept a static client secret. |
+| `SESSION_SECRET` | recommended | Signs the short-lived (10 min) OAuth "state" token used during the login redirect round-trip. Without it a random one is generated per process, so a login started right before a restart/redeploy just needs a retry — not a real problem, but set it to avoid even that. |
+| `ADMIN_EMAIL` | optional | Defaults to `yassira6@gmail.com`. |
+
+Apple's requirements are the real setup cost here, independent of this
+code: a **paid Apple Developer Program membership**, a registered Services
+ID with "Sign in with Apple" enabled and your domain + the callback URL
+verified, and a generated signing key. Google is free and takes a few
+minutes in Cloud Console. **I could not test either flow end-to-end** — this
+sandbox has no network access to `accounts.google.com` / `appleid.apple.com`
+and no real credentials — so start with Google, confirm it end-to-end, and
+treat Apple as the harder follow-up.
+
 ## Price alerts & email
 
-Anyone can create an alert (Alerts tab) for a company + a buy or sell target
-price + an email address — no account needed, just that email. A background
-job (`server/lib/alertScheduler.js`, every `ALERT_CHECK_INTERVAL_MS` ms,
-default 5 minutes) fetches the **live** price for every code with an active
-alert and emails + marks it `triggered` once the condition is met (price at
-or below target for a buy alert, at or above for a sell alert). A code whose
-live fetch fails that round is skipped, not evaluated against demo data —
-same reasoning as the directory: an alert email should never fire off a
-synthetic price.
+Signed-in users create an alert (Alerts tab) for a company + a buy or sell
+target price; the email is always their account's own email, never a
+free-text field. A background job (`server/lib/alertScheduler.js`, every
+`ALERT_CHECK_INTERVAL_MS` ms, default 5 minutes) fetches the **live** price
+for every code with an active alert and emails + marks it `triggered` once
+the condition is met (price at or below target for a buy alert, at or above
+for a sell alert). A code whose live fetch fails that round is skipped, not
+evaluated against demo data — same reasoning as the directory: an alert
+email should never fire off a synthetic price.
 
-Emailing needs SMTP credentials via environment variables — without them the
-app still works fully (alerts are created, checked, and marked triggered),
-it just logs instead of sending:
+**Emails are sent from the backend, not the frontend** — nodemailer over
+real SMTP, awaited (not fire-and-forget) inside the scheduler, with the
+actual outcome (`email_sent` / `email_error`) written back onto the alert
+row so it's visible in the UI, not just assumed: the triggered alert on the
+user's own Alerts page shows "Sent"/"Failed", and the Admin page shows it
+for every alert in the system, which is exactly the proof that this is a
+real backend delivery path and not a front-end-only feature. Without SMTP
+credentials the app still works fully end-to-end (create/check/trigger),
+it just logs instead of sending and marks `email_sent: false`:
 
 | Variable | Required | Notes |
 | --- | --- | --- |
@@ -113,14 +155,12 @@ it just logs instead of sending:
 | `SMTP_SECURE` | optional | `"true"` for implicit TLS (port 465) |
 | `SMTP_USER` / `SMTP_PASS` | for email | provider credentials (Gmail needs an App Password, not your login password) |
 | `MAIL_FROM` | optional | defaults to `SMTP_USER` |
-| `APP_URL` | optional | included as a link back to the app in alert emails, e.g. `https://myshare-production.up.railway.app` |
+| `APP_URL` | optional | included as a link back to the app in alert emails, e.g. `https://myshare-production.up.railway.app`; also used to build the OAuth callback URL if set (otherwise inferred from the request) |
 | `ALERT_CHECK_INTERVAL_MS` | optional | default `300000` (5 min) |
 
-Basic abuse protection only (this is not a multi-tenant SaaS with verified
-accounts): alert creation is rate-limited per IP, and capped at 20 active
-alerts per email. There's no email verification step, so treat it as
-appropriate for personal/trusted use rather than a public sign-up product
-without adding one.
+Basic abuse protection only (this is not a hardened multi-tenant SaaS):
+alert creation is rate-limited per IP, and capped at 20 active alerts per
+account.
 
 ## Persistence (important for Railway)
 
@@ -128,9 +168,10 @@ The SQLite file (`server/data/myshare.db` by default, override with
 `DB_PATH`) lives on the container's local disk. **Railway's filesystem is
 ephemeral across redeploys** unless you attach a
 [Volume](https://docs.railway.com/reference/volumes) — without one, the
-directory's dynamic growth and every alert reset to just the seed data on
-the next deploy. To persist: add a Volume to the service, mount it at e.g.
-`/data`, and set `DB_PATH=/data/myshare.db`.
+company directory's growth, every alert, and **every signed-in user account
+and session** all reset on the next deploy (everyone would need to sign in
+again). To persist: add a Volume to the service, mount it at e.g. `/data`,
+and set `DB_PATH=/data/myshare.db`.
 
 ## Deploying (Railway, or any single-service Node host)
 
@@ -151,6 +192,38 @@ service or root-directory juggling needed.
 - Everything runs with zero configuration beyond that — Yahoo Finance needs
   no API key. For alert emails and for the directory/alerts to survive a
   redeploy, see "Price alerts & email" and "Persistence" above.
+
+## Backtesting the price-targets algorithm
+
+`server/scripts/backtest.js` walk-forward tests `analyzeSeries()`: for every
+trading day in a company's history (after a warmup window), it re-runs the
+exact analysis the live app would have shown "as of" that day, then checks
+up to `--horizon` trading days forward to see whether price actually reached
+that day's `targetSell`/`targetBuy`, and how long it took. Results are
+pooled by verdict bucket (strong_buy/buy/hold/sell/strong_sell) with a
+hit-rate and average/median days-to-hit for each target.
+
+```bash
+node server/scripts/backtest.js                       # default: 8 well-known codes, 1y, 40-day horizon
+node server/scripts/backtest.js --horizon=20 2222 1120 1180
+```
+
+**Read the caveat the script itself prints before trusting the numbers**:
+this was built and run in a sandboxed environment with no network access to
+Yahoo Finance, so it fell back to the same synthetic random-walk generator
+the live app uses when Yahoo is unreachable. That's fine for what it's
+actually good for here — proving the mechanism works end-to-end over a full
+year of data without crashing, and that targets/verdicts stay internally
+consistent (buy-side verdicts skew toward higher sell-target hit rates than
+sell-side ones, counts are roughly balanced between buy and sell days, which
+is what you'd want from a non-biased scorer) — but a random walk has no real
+support/resistance or crowd behavior, so hit-rates measured against it are
+**not evidence of real predictive edge on TASI prices**. The script already
+prefers live data automatically whenever `fetchHistory()` succeeds, so
+running it from a machine with normal internet access (or from a Railway
+shell) against real tickers is what would actually validate or refine the
+algorithm against a real year of TASI history — that's the run this
+environment couldn't do.
 
 ## Icon
 

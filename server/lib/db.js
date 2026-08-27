@@ -41,9 +41,45 @@ db.exec(`
     last_checked_at INTEGER
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT,
+    picture TEXT,
+    provider TEXT NOT NULL,
+    provider_user_id TEXT,
+    is_admin INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    last_login_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_alerts_email ON alerts(email);
   CREATE INDEX IF NOT EXISTS idx_alerts_status_code ON alerts(status, code);
   CREATE INDEX IF NOT EXISTS idx_companies_updated ON companies(updated_at);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
+
+// --- Lightweight migrations -------------------------------------------------
+// node:sqlite has no migration framework; CREATE TABLE IF NOT EXISTS above
+// only helps brand-new databases. A DB file created before this change needs
+// these columns added explicitly, so every startup checks for them.
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+ensureColumn("alerts", "user_id", "user_id TEXT");
+ensureColumn("alerts", "email_sent", "email_sent INTEGER");
+ensureColumn("alerts", "email_error", "email_error TEXT");
+db.exec(`CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)`);
 
 export { DB_PATH };

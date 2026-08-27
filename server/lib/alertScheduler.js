@@ -1,7 +1,13 @@
 import { fetchHistory } from "./yahooProxy.js";
 import { getCompany } from "./companies.js";
 import { sendAlertEmail } from "./mailer.js";
-import { listActiveAlertCodes, listActiveAlertsForCode, markAlertTriggered, touchAlertChecked } from "./alerts.js";
+import {
+  listActiveAlertCodes,
+  listActiveAlertsForCode,
+  markAlertTriggered,
+  touchAlertChecked,
+  markEmailResult,
+} from "./alerts.js";
 
 /**
  * Checks every code with at least one active alert against its LIVE price
@@ -45,9 +51,16 @@ export async function checkAlertsOnce() {
 
       markAlertTriggered(alert.id, price);
       triggered += 1;
-      sendAlertEmail(alert, company, price).catch((err) =>
-        console.error(`[alerts] unexpected email error for alert ${alert.id}:`, err)
-      );
+
+      // Awaited (not fire-and-forget) so the real send outcome — proof this
+      // isn't a front-end-only feature — is always recorded on the alert.
+      try {
+        const result = await sendAlertEmail(alert, company, price);
+        markEmailResult(alert.id, result.sent, result.sent ? null : result.reason);
+      } catch (err) {
+        console.error(`[alerts] unexpected email error for alert ${alert.id}:`, err);
+        markEmailResult(alert.id, false, err.message);
+      }
     }
   }
 

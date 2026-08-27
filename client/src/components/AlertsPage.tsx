@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useCompanies } from "../lib/CompaniesContext";
+import { useAuth } from "../lib/AuthContext";
 import { SearchBar } from "./SearchBar";
-import { fetchQuote, createAlert, fetchAlertsByEmail, cancelAlert as cancelAlertApi } from "../lib/api";
+import { LoginPage } from "./LoginPage";
+import { fetchQuote, createAlert, fetchMyAlerts, cancelAlert as cancelAlertApi } from "../lib/api";
 import { formatDateTime, formatPrice } from "../lib/format";
 import type { AlertDirection, PriceAlert, QuoteResponse } from "../types";
-
-const EMAIL_STORAGE_KEY = "myshare-alert-email";
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STATUS_STYLES: Record<PriceAlert["status"], string> = {
   active: "bg-brand-500/15 text-brand-300 ring-1 ring-inset ring-brand-500/30",
@@ -18,14 +17,7 @@ const STATUS_STYLES: Record<PriceAlert["status"], string> = {
 export function AlertsPage() {
   const { t, lang } = useLanguage();
   const { companies } = useCompanies();
-
-  const [email, setEmail] = useState(() => {
-    try {
-      return localStorage.getItem(EMAIL_STORAGE_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const { user, loading: authLoading } = useAuth();
 
   const [code, setCode] = useState<string | null>(null);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
@@ -70,23 +62,19 @@ export function AlertsPage() {
     if (suggested != null) setTargetPrice(suggested.toFixed(2));
   }, [quote, direction, targetEdited]);
 
-  function loadMyAlerts(forEmail: string) {
-    if (!EMAIL_RE.test(forEmail)) {
-      setMyAlerts([]);
-      return;
-    }
+  function loadMyAlerts() {
+    if (!user) return;
     setAlertsLoading(true);
-    fetchAlertsByEmail(forEmail)
+    fetchMyAlerts()
       .then(setMyAlerts)
       .catch(() => setMyAlerts([]))
       .finally(() => setAlertsLoading(false));
   }
 
   useEffect(() => {
-    const handle = setTimeout(() => loadMyAlerts(email), 400);
-    return () => clearTimeout(handle);
+    loadMyAlerts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -95,24 +83,13 @@ export function AlertsPage() {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
-      await createAlert({
-        code,
-        email: email.trim().toLowerCase(),
-        direction,
-        targetPrice: Number(targetPrice),
-        lang,
-      });
-      try {
-        localStorage.setItem(EMAIL_STORAGE_KEY, email.trim().toLowerCase());
-      } catch {
-        // ignore
-      }
+      await createAlert({ code, direction, targetPrice: Number(targetPrice), lang });
       setSubmitSuccess(true);
       setCode(null);
       setQuote(null);
       setTargetPrice("");
       setTargetEdited(false);
-      loadMyAlerts(email);
+      loadMyAlerts();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -122,14 +99,25 @@ export function AlertsPage() {
 
   async function onCancel(id: string) {
     try {
-      await cancelAlertApi(id, email);
-      loadMyAlerts(email);
+      await cancelAlertApi(id);
+      loadMyAlerts();
     } catch {
       // best-effort; the list refresh on next poll will reconcile
     }
   }
 
-  const canSubmit = !!code && EMAIL_RE.test(email) && Number(targetPrice) > 0 && !submitting;
+  if (authLoading) return null;
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-sm space-y-4 text-center">
+        <p className="text-sm text-ink-300">{t.alertsLoginRequired}</p>
+        <LoginPage />
+      </div>
+    );
+  }
+
+  const canSubmit = !!code && Number(targetPrice) > 0 && !submitting;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -142,7 +130,12 @@ export function AlertsPage() {
         onSubmit={onSubmit}
         className="space-y-5 rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6"
       >
-        <h3 className="text-base font-semibold text-white">{t.alertsFormTitle}</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-white">{t.alertsFormTitle}</h3>
+          <p className="text-xs text-ink-300">
+            {t.signedInAs} <span className="text-ink-100">{user.email}</span>
+          </p>
+        </div>
 
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-300">
@@ -216,21 +209,6 @@ export function AlertsPage() {
           {code && <p className="mt-1.5 text-xs text-ink-300">{t.alertsTargetHint}</p>}
         </div>
 
-        <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-300">
-            {t.alertsEmailLabel}
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            className="w-full rounded-2xl border border-ink-600 bg-ink-800/80 px-4 py-3 text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
-          />
-          <p className="mt-1.5 text-xs text-ink-300">{t.alertsEmailHint}</p>
-        </div>
-
         {submitError && <p className="text-sm font-medium text-bear">{submitError}</p>}
         {submitSuccess && <p className="text-sm font-medium text-brand-300">{t.alertsCreated}</p>}
 
@@ -248,7 +226,7 @@ export function AlertsPage() {
           <h3 className="text-base font-semibold text-white">{t.alertsMyTitle}</h3>
           <button
             type="button"
-            onClick={() => loadMyAlerts(email)}
+            onClick={loadMyAlerts}
             className="rounded-full border border-ink-600 px-3 py-1.5 text-xs font-medium text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
           >
             {t.alertsRefresh}
@@ -258,10 +236,7 @@ export function AlertsPage() {
         {alertsLoading ? (
           <p className="mt-4 text-sm text-ink-300">{t.loading}</p>
         ) : myAlerts.length === 0 ? (
-          <div className="mt-4 text-sm text-ink-300">
-            <p>{t.alertsEmpty}</p>
-            <p className="mt-1 text-xs">{t.alertsEmptyHint}</p>
-          </div>
+          <p className="mt-4 text-sm text-ink-300">{t.alertsEmpty}</p>
         ) : (
           <ul className="mt-4 divide-y divide-ink-800">
             {myAlerts.map((a) => {
@@ -281,6 +256,17 @@ export function AlertsPage() {
                       {a.status === "triggered" && a.triggeredAt
                         ? `${t.alertsTriggeredAt} ${formatDateTime(a.triggeredAt, lang)}`
                         : `${t.alertsCreatedAt} ${formatDateTime(a.createdAt, lang)}`}
+                      {a.status === "triggered" && (
+                        <>
+                          {" · "}
+                          {t.emailDeliveryLabel}:{" "}
+                          {a.emailSent ? (
+                            <span className="text-brand-300">{t.emailSentYes}</span>
+                          ) : (
+                            <span className="text-bear">{t.emailSentNo}</span>
+                          )}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

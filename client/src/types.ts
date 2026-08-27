@@ -100,4 +100,28 @@ export interface PriceAlert {
   triggeredAt: number | null;
   triggeredPrice: number | null;
   lastCheckedAt: number | null;
+  emailSent: boolean | null;
+  emailError: string | null;
+  userEmail?: string;
+  userName?: string | null;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: "google" | "apple";
+  isAdmin: boolean;
+  createdAt: number;
+  lastLoginAt: number;
+}
+
+export interface AdminStatus {
+  smtpConfigured: boolean;
+  googleConfigured: boolean;
+  appleConfigured: boolean;
+  totalUsers: number;
+  totalAlerts: number;
+  totalCompanies: number;
 }

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import NodeCache from "node-cache";
 import path from "node:path";
 import fs from "node:fs";
@@ -7,12 +8,20 @@ import { fetchHistory } from "./lib/yahooProxy.js";
 import { analyzeSeries } from "./lib/analysis.js";
 import { generateDemoHistory } from "./lib/demoData.js";
 import { seedCompanies, listCompanies, touchCompanyFromLiveQuote } from "./lib/companies.js";
-import { createAlert, listAlertsByEmail, cancelAlert, ValidationError } from "./lib/alerts.js";
+import { createAlert, listAlertsByUser, cancelAlert, ValidationError } from "./lib/alerts.js";
 import { startAlertScheduler } from "./lib/alertScheduler.js";
+import { authRouter } from "./lib/authRoutes.js";
+import { adminRouter } from "./lib/adminRoutes.js";
+import { requireAuth, optionalAuth } from "./lib/auth.js";
 
 const app = express();
 const PORT = process.env.PORT || 5174;
 const ALERT_CHECK_INTERVAL_MS = Number(process.env.ALERT_CHECK_INTERVAL_MS) || 5 * 60_000;
+
+// Needed so req.protocol reflects "https" (not "http") behind Railway's
+// reverse proxy — matters for building correct OAuth redirect_uri values
+// and for the session cookie's `secure` flag.
+app.set("trust proxy", 1);
 
 // In production this server also hosts the built frontend, so the whole app
 // deploys as one process/service (e.g. on Railway) instead of needing two.
@@ -27,6 +36,7 @@ const seedResult = seedCompanies();
 console.log(`[companies] seeded ${seedResult.inserted}/${seedResult.total} new row(s) from starter directory`);
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 
 const CODE_RE = /^\d{3,5}$/;
@@ -71,6 +81,23 @@ app.get("/api/quote/:code", async (req, res) => {
   res.json(payload);
 });
 
+// --- Auth -------------------------------------------------------------------
+// express.urlencoded is scoped to /auth because Apple's callback arrives as
+// an x-www-form-urlencoded POST (response_mode=form_post); Google's is a
+// plain GET with a query string and doesn't need it, but applying it here is
+// harmless either way.
+app.use("/auth", express.urlencoded({ extended: false }), authRouter);
+
+app.get("/api/me", optionalAuth, (req, res) => {
+  res.json(req.user);
+});
+
+app.use("/api/admin", adminRouter);
+
+// --- Alerts -------------------------------------------------------------------
+// Every route below requires a signed-in session; email is always the
+// authenticated user's own, never a client-supplied field.
+
 // Very small in-memory limiter: protects the alert-creation endpoint (which
 // sends email) from being hammered. Not meant as a security boundary, just
 // abuse friction — good enough for a single-instance deployment.
@@ -89,9 +116,9 @@ function rateLimit({ max, windowMs }) {
   };
 }
 
-app.post("/api/alerts", rateLimit({ max: 20, windowMs: 10 * 60_000 }), (req, res) => {
+app.post("/api/alerts", requireAuth, rateLimit({ max: 20, windowMs: 10 * 60_000 }), (req, res) => {
   try {
-    const alert = createAlert(req.body || {});
+    const alert = createAlert({ ...req.body, userId: req.user.id, email: req.user.email });
     res.status(201).json(alert);
   } catch (err) {
     if (err instanceof ValidationError) {
@@ -102,15 +129,13 @@ app.post("/api/alerts", rateLimit({ max: 20, windowMs: 10 * 60_000 }), (req, res
   }
 });
 
-app.get("/api/alerts", (req, res) => {
-  const email = String(req.query.email || "");
-  res.json(listAlertsByEmail(email));
+app.get("/api/alerts", requireAuth, (req, res) => {
+  res.json(listAlertsByUser(req.user.id));
 });
 
-app.delete("/api/alerts/:id", (req, res) => {
-  const email = String(req.query.email || "");
-  const ok = cancelAlert(req.params.id, email);
-  if (!ok) return res.status(404).json({ error: "Alert not found for this email." });
+app.delete("/api/alerts/:id", requireAuth, (req, res) => {
+  const ok = cancelAlert(req.params.id, req.user.id);
+  if (!ok) return res.status(404).json({ error: "Alert not found." });
   res.json({ ok: true });
 });
 
@@ -118,7 +143,7 @@ if (SERVES_CLIENT) {
   app.use(express.static(CLIENT_DIST));
   // SPA fallback for any non-API GET (the app is single-page today, and this
   // keeps direct/refresh navigation working if client-side routes are added later).
-  app.get(/^(?!\/api\/).*/, (_req, res) => {
+  app.get(/^(?!\/api\/|\/auth\/).*/, (_req, res) => {
     res.sendFile(path.join(CLIENT_DIST, "index.html"));
   });
 } else {

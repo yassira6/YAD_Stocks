@@ -6,26 +6,23 @@ import { PriceChart } from "./components/PriceChart";
 import { AnalysisPanel } from "./components/AnalysisPanel";
 import { DemoBanner } from "./components/DemoBanner";
 import { AlertsPage } from "./components/AlertsPage";
+import { LoginPage } from "./components/LoginPage";
+import { AdminPage } from "./components/AdminPage";
 import { useLanguage } from "./i18n/LanguageContext";
 import { useCompanies } from "./lib/CompaniesContext";
 import { fetchQuote } from "./lib/api";
+import { parseHash, type View } from "./lib/hashRoute";
 import type { QuoteResponse } from "./types";
-
-export type View = "stock" | "alerts";
 
 // Matches the backend's quote cache TTL (server/index.js) — polling faster than
 // this just re-serves the same cached numbers, so it's the fastest interval
 // that actually buys fresher data instead of wasted requests.
 const REFRESH_INTERVAL_MS = 60_000;
 
-function readViewFromHash(): View {
-  return window.location.hash === "#/alerts" ? "alerts" : "stock";
-}
-
 export default function App() {
   const { t } = useLanguage();
   const { companies, refresh: refreshCompanies } = useCompanies();
-  const [view, setView] = useState<View>(readViewFromHash);
+  const [view, setView] = useState<View>(() => parseHash().view);
   const [code, setCode] = useState<string | null>(null);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,7 +33,7 @@ export default function App() {
   const knownCodesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const onHashChange = () => setView(readViewFromHash());
+    const onHashChange = () => setView(parseHash().view);
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -44,11 +41,6 @@ export default function App() {
   useEffect(() => {
     knownCodesRef.current = new Set(companies.map((c) => c.code));
   }, [companies]);
-
-  function navigate(next: View) {
-    window.location.hash = next === "alerts" ? "#/alerts" : "";
-    setView(next);
-  }
 
   const load = useCallback(
     async (c: string, opts?: { silent?: boolean }) => {
@@ -97,11 +89,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-ink-950 via-ink-950 to-ink-900">
-      <Header view={view} onNavigate={navigate} />
+      <Header view={view} />
 
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
-        {view === "alerts" ? (
+        {view === "login" ? (
+          <LoginPage />
+        ) : view === "alerts" ? (
           <AlertsPage />
+        ) : view === "admin" ? (
+          <AdminPage />
         ) : (
           <>
             <div className="mx-auto max-w-2xl">
