@@ -19,7 +19,8 @@ function detectInitialLang(): Lang {
   } catch {
     // ignore storage access issues (private browsing, etc.)
   }
-  return navigator.language?.toLowerCase().startsWith("ar") ? "ar" : "en";
+  // Arabic is the app's default; an explicit toggle (persisted above) is the only way to change it.
+  return "ar";
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {

@@ -443,12 +443,41 @@ export function analyzeSeries(series) {
   const roundedScore = Math.round(clamp(score, -100, 100));
   const verdict = verdictFromScore(roundedScore);
 
+  // ---- Price targets: fair value + buy/sell zones from trend & volatility ----
+  // Not a fundamental valuation (no earnings/cash-flow model) — a statistical
+  // read: "fair value" is the blended short/medium trend (SMA20 & SMA50), and
+  // the buy/sell targets sit one Bollinger standard deviation below/above it,
+  // i.e. the same volatility band already used for the Bollinger signal above.
+  let priceTargets = null;
+  {
+    const s20 = sma20[last];
+    const s50 = sma50[last];
+    const upper = bb.upper[last];
+    const mid = bb.mid[last];
+    const sd20 = upper != null && mid != null ? upper - mid : null;
+    if (s20 != null && s50 != null && sd20 != null) {
+      const fairValue = (s20 + s50) / 2;
+      const targetBuy = fairValue - sd20;
+      const targetSell = fairValue + sd20;
+      const pct = (target) => (target - price) / price;
+      priceTargets = {
+        fairValue,
+        targetBuy,
+        targetSell,
+        fairValuePct: pct(fairValue),
+        targetBuyPct: pct(targetBuy),
+        targetSellPct: pct(targetSell),
+      };
+    }
+  }
+
   return {
     insufficientData: false,
     score: roundedScore,
     verdict,
     verdictLabel: VERDICT_LABELS[verdict],
     price,
+    priceTargets,
     reasons: reasons.sort((a, b) => Math.abs(b.signal * b.weight) - Math.abs(a.signal * a.weight)),
     latest: {
       sma20: sma20[last],

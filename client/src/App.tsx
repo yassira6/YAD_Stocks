@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Header } from "./components/Header";
 import { SearchBar } from "./components/SearchBar";
 import { PriceHeader } from "./components/PriceHeader";
@@ -12,6 +12,11 @@ import type { Company, QuoteResponse } from "./types";
 
 const ALL_COMPANIES = companies as Company[];
 
+// Matches the backend's quote cache TTL (server/index.js) — polling faster than
+// this just re-serves the same cached numbers, so it's the fastest interval
+// that actually buys fresher data instead of wasted requests.
+const REFRESH_INTERVAL_MS = 60_000;
+
 function findCompany(code: string): Company | null {
   return ALL_COMPANIES.find((c) => c.code === code) ?? null;
 }
@@ -21,24 +26,44 @@ export default function App() {
   const [code, setCode] = useState<string | null>(null);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const codeRef = useRef<string | null>(null);
 
-  const load = useCallback(async (c: string) => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async (c: string, opts?: { silent?: boolean }) => {
+    if (opts?.silent) setRefreshing(true);
+    else setLoading(true);
+    if (!opts?.silent) setError(null);
+
     try {
       const data = await fetchQuote(c);
+      // Ignore a stale response landing after the user already switched companies.
+      if (codeRef.current !== c) return;
       setQuote(data);
+      setLastUpdated(Date.now());
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setQuote(null);
+      if (codeRef.current !== c) return;
+      if (!opts?.silent) {
+        setError(err instanceof Error ? err.message : String(err));
+        setQuote(null);
+      }
+      // Silent background refresh failures keep showing the last good quote.
     } finally {
-      setLoading(false);
+      if (codeRef.current !== c) return;
+      if (opts?.silent) setRefreshing(false);
+      else setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (code) load(code);
+    codeRef.current = code;
+    if (!code) return;
+    load(code);
+
+    const interval = setInterval(() => load(code, { silent: true }), REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [code, load]);
 
   const company = code ? findCompany(code) : null;
@@ -86,7 +111,13 @@ export default function App() {
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:items-start">
               <div className="space-y-5 lg:col-span-3">
                 {quote.dataSource === "demo" && <DemoBanner />}
-                <PriceHeader quote={quote} company={company} />
+                <PriceHeader
+                  quote={quote}
+                  company={company}
+                  refreshing={refreshing}
+                  lastUpdated={lastUpdated}
+                  onRefresh={() => load(code, { silent: true })}
+                />
                 <PriceChart series={quote.series} />
               </div>
               <div className="lg:col-span-2">

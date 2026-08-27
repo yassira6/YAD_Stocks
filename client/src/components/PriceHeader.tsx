@@ -5,9 +5,12 @@ import type { Company, QuoteResponse } from "../types";
 interface Props {
   quote: QuoteResponse;
   company: Company | null;
+  refreshing?: boolean;
+  lastUpdated?: number | null;
+  onRefresh?: () => void;
 }
 
-export function PriceHeader({ quote, company }: Props) {
+export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
   const { t, lang } = useLanguage();
   const change = quote.regularMarketPrice - quote.previousClose;
   const changePct = quote.previousClose ? change / quote.previousClose : 0;
@@ -65,9 +68,44 @@ export function PriceHeader({ quote, company }: Props) {
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-ink-300">
-        {t.asOf} {formatDateTime(quote.regularMarketTime, lang)} · {quote.exchangeName}
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-ink-300">
+          {t.asOf} {formatDateTime(quote.regularMarketTime, lang)} · {quote.exchangeName}
+        </p>
+
+        <div className="flex items-center gap-2 text-xs text-ink-300">
+          <span className="inline-flex items-center gap-1">
+            <span className={`h-1.5 w-1.5 rounded-full bg-brand-400 ${refreshing ? "animate-pulse" : ""}`} />
+            {refreshing ? t.refreshing : t.autoRefreshNote}
+          </span>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label={t.refreshNow}
+              title={t.refreshNow}
+              className="rounded-full border border-ink-600 p-1.5 text-ink-200 transition hover:border-brand-500 hover:text-brand-300 disabled:opacity-50"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                className={refreshing ? "animate-spin" : ""}
+              >
+                <path
+                  d="M4 12a8 8 0 0 1 14.5-4.5M20 12a8 8 0 0 1-14.5 4.5M4 4v5h5M20 20v-5h-5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

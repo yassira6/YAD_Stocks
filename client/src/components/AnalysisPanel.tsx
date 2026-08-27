@@ -1,5 +1,5 @@
 import { useLanguage } from "../i18n/LanguageContext";
-import { formatCompactNumber, formatNumber, formatPrice } from "../lib/format";
+import { formatCompactNumber, formatNumber, formatPercent, formatPrice } from "../lib/format";
 import type { Analysis, Reason, Verdict } from "../types";
 
 const VERDICT_STYLES: Record<Verdict, { ring: string; bg: string; text: string; bar: string }> = {
@@ -23,6 +23,34 @@ function ReasonRow({ reason, lang }: { reason: Reason; lang: "en" | "ar" }) {
       </div>
       <p className="text-sm leading-relaxed text-ink-100">{lang === "ar" ? reason.ar : reason.en}</p>
     </li>
+  );
+}
+
+function TargetCard({
+  label,
+  price,
+  pct,
+  currency,
+  lang,
+}: {
+  label: string;
+  price: number;
+  pct: number;
+  currency: string;
+  lang: "en" | "ar";
+}) {
+  const up = pct >= 0;
+  return (
+    <div className="rounded-2xl border border-ink-700 bg-ink-850 px-4 py-3.5">
+      <p className="text-[11px] uppercase tracking-wide text-ink-300">{label}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums text-white sm:text-xl">{formatPrice(price, lang, currency)}</p>
+      <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold tabular-nums ${up ? "text-bull" : "text-bear"}`}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className={up ? "" : "rotate-180"}>
+          <path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {formatPercent(pct, lang)}
+      </p>
+    </div>
   );
 }
 
@@ -85,6 +113,38 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
           <p className="mt-2 text-xs text-ink-300">{t.scoreHint}</p>
         </div>
       </div>
+
+      {/* Price targets */}
+      {analysis.priceTargets && (
+        <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
+          <h3 className="text-base font-semibold text-white">{t.priceTargetsTitle}</h3>
+          <p className="mt-1 text-sm text-ink-300">{t.priceTargetsSubtitle}</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <TargetCard
+              label={t.fairValue}
+              price={analysis.priceTargets.fairValue}
+              pct={analysis.priceTargets.fairValuePct}
+              currency={currency}
+              lang={lang}
+            />
+            <TargetCard
+              label={t.targetBuyPrice}
+              price={analysis.priceTargets.targetBuy}
+              pct={analysis.priceTargets.targetBuyPct}
+              currency={currency}
+              lang={lang}
+            />
+            <TargetCard
+              label={t.targetSellPrice}
+              price={analysis.priceTargets.targetSell}
+              pct={analysis.priceTargets.targetSellPct}
+              currency={currency}
+              lang={lang}
+            />
+          </div>
+          <p className="mt-3 text-xs text-ink-300">{t.vsCurrent}</p>
+        </div>
+      )}
 
       {/* Why this call */}
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">

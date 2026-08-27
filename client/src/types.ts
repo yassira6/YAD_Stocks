@@ -32,6 +32,14 @@ export interface Analysis {
   verdict?: Verdict;
   verdictLabel?: { en: string; ar: string };
   price?: number;
+  priceTargets?: {
+    fairValue: number;
+    targetBuy: number;
+    targetSell: number;
+    fairValuePct: number;
+    targetBuyPct: number;
+    targetSellPct: number;
+  } | null;
   reasons?: Reason[];
   latest?: {
     sma20: number | null;
