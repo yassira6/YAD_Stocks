@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
+
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #0f3d2e;
+
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #f59e0b;
+
+  --color-ink-950: #070b12;
+  --color-ink-900: #0b1220;
+  --color-ink-850: #0f1729;
+  --color-ink-800: #131d33;
+  --color-ink-700: #1b2740;
+  --color-ink-600: #26365a;
+  --color-ink-500: #3b4d78;
+  --color-ink-300: #7f8fb3;
+  --color-ink-200: #a9b4d0;
+  --color-ink-100: #dbe1f0;
+
+  --color-bull: #22c55e;
+  --color-bear: #f43f5e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html[lang="ar"] body {
+  font-family: var(--font-arabic);
+}
+
+/* Directional utility: mirror only what truly needs mirroring (icons/arrows),
+   handled per-component; layout direction itself comes from the `dir` attribute. */
+::selection {
+  background: var(--color-brand-600);
+  color: white;
+}
+
+/* Lightweight-charts renders a canvas; keep it from overflowing on narrow screens */
+.chart-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+@supports (font-variation-settings: normal) {
+  html {
+    font-optical-sizing: auto;
+  }
+}

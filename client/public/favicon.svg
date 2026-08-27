@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YAD Stocks">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f3d2e"/>
+      <stop offset="1" stop-color="#065f46"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- subtle geometric texture (nod to Saudi/Arabesque pattern), low-opacity -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="2">
+    <circle cx="256" cy="256" r="210"/>
+    <circle cx="256" cy="256" r="170"/>
+  </g>
+
+  <!-- candlesticks forming an uptrend -->
+  <g>
+    <rect x="120" y="300" width="34" height="90" rx="6" fill="url(#bar)"/>
+    <line x1="137" y1="284" x2="137" y2="406" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+
+    <rect x="186" y="250" width="34" height="110" rx="6" fill="url(#bar)"/>
+    <line x1="203" y1="230" x2="203" y2="376" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+
+    <rect x="252" y="210" width="34" height="95" rx="6" fill="url(#bar)"/>
+    <line x1="269" y1="190" x2="269" y2="320" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
+
+    <rect x="318" y="150" width="34" height="130" rx="6" fill="url(#gold)"/>
+    <line x1="335" y1="128" x2="335" y2="296" stroke="#fbbf24" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- upward trend arrow -->
+  <path d="M112 330 L200 260 L262 300 L372 150" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+  <path d="M320 150 L372 150 L372 202" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
