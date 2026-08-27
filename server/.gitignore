@@ -2,6 +2,9 @@ node_modules
 *.log
 .env
 
+# Generated at build time by scripts/generate-version.js
+version.json
+
 # Local SQLite DB (runtime data — never the seed data/companies.json, which is tracked)
 data/*.db
 data/*.db-journal

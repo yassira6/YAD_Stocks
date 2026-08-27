@@ -122,7 +122,7 @@ export function AlertsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-white sm:text-2xl">{t.alertsTitle}</h2>
+        <h2 className="text-xl font-bold text-ink-100 sm:text-2xl">{t.alertsTitle}</h2>
         <p className="mt-1 text-sm text-ink-300">{t.alertsSubtitle}</p>
       </div>
 
@@ -131,7 +131,7 @@ export function AlertsPage() {
         className="space-y-5 rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6"
       >
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-white">{t.alertsFormTitle}</h3>
+          <h3 className="text-base font-semibold text-ink-100">{t.alertsFormTitle}</h3>
           <p className="text-xs text-ink-300">
             {t.signedInAs} <span className="text-ink-100">{user.email}</span>
           </p>
@@ -152,7 +152,7 @@ export function AlertsPage() {
               <p className="text-ink-100">
                 {company ? (lang === "ar" ? company.nameAr || company.nameEn : company.nameEn) : code}
                 <span className="mx-2 text-ink-300">·</span>
-                {t.alertsCurrentPrice}: <span className="font-semibold text-white">{formatPrice(quote.regularMarketPrice, lang, quote.currency)}</span>
+                {t.alertsCurrentPrice}: <span className="font-semibold text-ink-100">{formatPrice(quote.regularMarketPrice, lang, quote.currency)}</span>
               </p>
             ) : null}
           </div>
@@ -168,7 +168,7 @@ export function AlertsPage() {
               onClick={() => setDirection("buy")}
               className={`rounded-2xl border px-4 py-3 text-start text-sm font-medium transition ${
                 direction === "buy"
-                  ? "border-brand-500 bg-brand-500/10 text-brand-200"
+                  ? "border-brand-500 bg-brand-500/10 text-brand-300"
                   : "border-ink-700 bg-ink-850 text-ink-200 hover:border-ink-500"
               }`}
             >
@@ -179,7 +179,7 @@ export function AlertsPage() {
               onClick={() => setDirection("sell")}
               className={`rounded-2xl border px-4 py-3 text-start text-sm font-medium transition ${
                 direction === "sell"
-                  ? "border-bear bg-bear/10 text-rose-200"
+                  ? "border-bear bg-bear/10 text-bear"
                   : "border-ink-700 bg-ink-850 text-ink-200 hover:border-ink-500"
               }`}
             >
@@ -204,7 +204,7 @@ export function AlertsPage() {
             }}
             disabled={!code}
             placeholder={!code ? t.alertsSelectFirst : undefined}
-            className="w-full rounded-2xl border border-ink-600 bg-ink-800/80 px-4 py-3 text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+            className="w-full rounded-2xl border border-ink-600 bg-ink-800/80 px-4 py-3 text-ink-100 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
           />
           {code && <p className="mt-1.5 text-xs text-ink-300">{t.alertsTargetHint}</p>}
         </div>
@@ -223,7 +223,7 @@ export function AlertsPage() {
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-white">{t.alertsMyTitle}</h3>
+          <h3 className="text-base font-semibold text-ink-100">{t.alertsMyTitle}</h3>
           <button
             type="button"
             onClick={loadMyAlerts}
@@ -245,7 +245,7 @@ export function AlertsPage() {
               return (
                 <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-3.5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">
+                    <p className="truncate text-sm font-medium text-ink-100">
                       {name} <span className="font-mono text-xs text-brand-300">({a.code})</span>
                     </p>
                     <p className="mt-0.5 text-xs text-ink-300">

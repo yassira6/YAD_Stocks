@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useAuth } from "../lib/AuthContext";
+import { useTheme } from "../lib/ThemeContext";
 import { navigateTo, type View } from "../lib/hashRoute";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 export function Header({ view }: Props) {
   const { t, lang, toggleLang } = useLanguage();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -23,7 +25,7 @@ export function Header({ view }: Props) {
         >
           <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-brand-900/40 sm:h-10 sm:w-10" />
           <div className="leading-tight">
-            <h1 className="text-base font-bold tracking-tight text-white sm:text-lg">{t.appName}</h1>
+            <h1 className="text-base font-bold tracking-tight text-ink-100 sm:text-lg">{t.appName}</h1>
             <p className="hidden text-xs text-ink-300 sm:block">{t.tagline}</p>
           </div>
         </button>
@@ -34,7 +36,7 @@ export function Header({ view }: Props) {
               type="button"
               onClick={() => navigateTo("stock")}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                view === "stock" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
+                view === "stock" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
               }`}
             >
               {t.navStocks}
@@ -43,7 +45,7 @@ export function Header({ view }: Props) {
               type="button"
               onClick={() => navigateTo("alerts")}
               className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                view === "alerts" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
+                view === "alerts" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
               }`}
             >
               {t.navAlerts}
@@ -53,7 +55,7 @@ export function Header({ view }: Props) {
                 type="button"
                 onClick={() => navigateTo("admin")}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                  view === "admin" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-white"
+                  view === "admin" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
                 }`}
               >
                 {t.navAdmin}
@@ -77,6 +79,35 @@ export function Header({ view }: Props) {
               />
             </svg>
             {lang === "en" ? "العربية" : "English"}
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center justify-center rounded-full border border-ink-600 bg-ink-800/70 p-2 text-ink-100 transition hover:border-brand-500 hover:text-brand-300 active:scale-95"
+            aria-label={theme === "dark" ? t.toggleThemeToLight : t.toggleThemeToDark}
+            title={theme === "dark" ? t.toggleThemeToLight : t.toggleThemeToDark}
+          >
+            {theme === "dark" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.8" />
+                <path
+                  d="M12 2.5v2M12 19.5v2M4.5 12h-2M21.5 12h-2M6.3 6.3 4.9 4.9M19.1 19.1l-1.4-1.4M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </button>
 
           {user ? (

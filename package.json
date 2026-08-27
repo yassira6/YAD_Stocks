@@ -2,12 +2,13 @@
   "name": "myshare",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "MyShare — TASI search, price charts, and money-flow analysis (bilingual AR/EN).",
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
-    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server",
+    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server && node scripts/generate-version.js",
     "start": "node server/index.js",
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client"

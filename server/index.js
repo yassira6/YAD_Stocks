@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import NodeCache from "node-cache";
 import path from "node:path";
 import fs from "node:fs";
+import { execSync } from "node:child_process";
 import { fetchHistory } from "./lib/yahooProxy.js";
 import { analyzeSeries } from "./lib/analysis.js";
 import { generateDemoHistory } from "./lib/demoData.js";
@@ -32,6 +33,33 @@ const SERVES_CLIENT = fs.existsSync(CLIENT_DIST);
 // upstream calls without users noticing stale data.
 const cache = new NodeCache({ stdTTL: 60, checkperiod: 30 });
 
+// Written by scripts/generate-version.js as part of `npm run build` (root).
+// Falls back to computing it directly for local `npm run dev`, where that
+// build step doesn't run.
+function loadVersionInfo() {
+  const versionPath = path.resolve(process.cwd(), "server/version.json");
+  try {
+    return JSON.parse(fs.readFileSync(versionPath, "utf-8"));
+  } catch {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8"));
+    const git = (cmd, fallback) => {
+      try {
+        return execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+      } catch {
+        return fallback;
+      }
+    };
+    return {
+      version: pkg.version,
+      buildNumber: Number(git("git rev-list --count HEAD", "0")) || 0,
+      commit: git("git rev-parse --short HEAD", "dev"),
+      builtAt: null,
+    };
+  }
+}
+const VERSION_INFO = loadVersionInfo();
+console.log(`[version] v${VERSION_INFO.version} build ${VERSION_INFO.buildNumber} (${VERSION_INFO.commit})`);
+
 const seedResult = seedCompanies();
 console.log(`[companies] seeded ${seedResult.inserted}/${seedResult.total} new row(s) from starter directory`);
 
@@ -42,6 +70,8 @@ app.use(express.json());
 const CODE_RE = /^\d{3,5}$/;
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+app.get("/api/version", (_req, res) => res.json(VERSION_INFO));
 
 app.get("/api/companies", (_req, res) => {
   res.json(listCompanies());

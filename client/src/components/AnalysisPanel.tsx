@@ -43,7 +43,7 @@ function TargetCard({
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-850 px-4 py-3.5">
       <p className="text-[11px] uppercase tracking-wide text-ink-300">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums text-white sm:text-xl">{formatPrice(price, lang, currency)}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums text-ink-100 sm:text-xl">{formatPrice(price, lang, currency)}</p>
       <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold tabular-nums ${up ? "text-bull" : "text-bear"}`}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" className={up ? "" : "rotate-180"}>
           <path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -58,7 +58,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-850 px-3.5 py-3">
       <p className="text-[11px] uppercase tracking-wide text-ink-300">{label}</p>
-      <p className="mt-1 text-base font-semibold tabular-nums text-white">{value}</p>
+      <p className="mt-1 text-base font-semibold tabular-nums text-ink-100">{value}</p>
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
         <div className="mt-5">
           <div className="relative h-2.5 rounded-full bg-gradient-to-r from-bear via-ink-600 to-brand-400">
             <div
-              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-ink-950 bg-white shadow"
+              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-black/15 bg-white shadow"
               style={{ insetInlineStart: `calc(${gaugePct}% - 8px)` }}
             />
           </div>
@@ -117,7 +117,7 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
       {/* Price targets */}
       {analysis.priceTargets && (
         <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-          <h3 className="text-base font-semibold text-white">{t.priceTargetsTitle}</h3>
+          <h3 className="text-base font-semibold text-ink-100">{t.priceTargetsTitle}</h3>
           <p className="mt-1 text-sm text-ink-300">{t.priceTargetsSubtitle}</p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <TargetCard
@@ -148,7 +148,7 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
 
       {/* Why this call */}
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-        <h3 className="text-base font-semibold text-white">{t.whyThisCall}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.whyThisCall}</h3>
         <ul className="mt-1 divide-y divide-ink-800">
           {analysis.reasons?.map((r, i) => (
             <ReasonRow key={i} reason={r} lang={lang} />
@@ -158,7 +158,7 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
 
       {/* Money flow / big players */}
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-        <h3 className="text-base font-semibold text-white">{t.moneyFlowTitle}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.moneyFlowTitle}</h3>
         <p className="mt-1 text-sm text-ink-300">{t.moneyFlowSubtitle}</p>
 
         <p className="mt-4 rounded-2xl bg-ink-850 p-3.5 text-sm leading-relaxed text-ink-100 ring-1 ring-inset ring-ink-700">
@@ -186,7 +186,7 @@ export function AnalysisPanel({ analysis, currency }: { analysis: Analysis; curr
 
       {/* Key indicators */}
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-        <h3 className="text-base font-semibold text-white">{t.indicatorsTitle}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.indicatorsTitle}</h3>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatCard label={t.sma20} value={formatPrice(latest.sma20, lang, currency)} />
           <StatCard label={t.sma50} value={formatPrice(latest.sma50, lang, currency)} />

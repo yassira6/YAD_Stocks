@@ -225,6 +225,33 @@ shell) against real tickers is what would actually validate or refine the
 algorithm against a real year of TASI history — that's the run this
 environment couldn't do.
 
+## Theme (light/dark)
+
+The toggle in the header (sun/moon icon) switches between light and dark;
+the choice is remembered per-browser (`localStorage`), and a first-time
+visitor gets whatever their OS is set to (`prefers-color-scheme`) with no
+flash of the wrong theme (a small inline script in `client/index.html` sets
+the `data-theme` attribute before first paint). Every color in
+`client/src/index.css`'s `@theme` block is a semantic role (page background,
+card background, border, muted text, primary text, ...), not a fixed
+swatch — `:root[data-theme="light"]` redefines the same CSS variables to
+light-appropriate values, so the whole app re-themes without touching
+component markup. The one exception is the price chart
+(`client/src/components/PriceChart.tsx`): `lightweight-charts` draws to a
+`<canvas>`, which can't resolve a CSS variable, so it keeps a small
+hand-written light/dark palette in sync with the same tokens.
+
+## Version footer
+
+The footer shows `vX.Y.Z · build N · <commit>`. `N` is the total git commit
+count on the branch (`git rev-list --count HEAD`), so it increments by
+exactly 1 on every commit/deploy automatically — nothing to remember to bump
+by hand. `scripts/generate-version.js` writes this to `server/version.json`
+as part of `npm run build` (root `package.json`), and `GET /api/version`
+serves it to the footer. Running the server without that build step (e.g.
+`npm run dev` inside `server/`) falls back to computing the same thing from
+git directly at startup, so local dev still shows a real build number.
+
 ## Icon
 
 `client/public/icon.svg` — green gradient (Saudi-market association) with

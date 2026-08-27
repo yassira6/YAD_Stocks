@@ -5,6 +5,7 @@ import { PriceHeader } from "./components/PriceHeader";
 import { PriceChart } from "./components/PriceChart";
 import { AnalysisPanel } from "./components/AnalysisPanel";
 import { DemoBanner } from "./components/DemoBanner";
+import { Footer } from "./components/Footer";
 import { AlertsPage } from "./components/AlertsPage";
 import { LoginPage } from "./components/LoginPage";
 import { AdminPage } from "./components/AdminPage";
@@ -108,7 +109,7 @@ export default function App() {
               {!code && (
                 <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-ink-700 py-20 text-center">
                   <img src="/icon.svg" alt="" className="h-14 w-14 rounded-2xl opacity-90" />
-                  <p className="mt-3 text-lg font-semibold text-white">{t.selectPrompt}</p>
+                  <p className="mt-3 text-lg font-semibold text-ink-100">{t.selectPrompt}</p>
                   <p className="text-sm text-ink-300">{t.selectPromptSub}</p>
                 </div>
               )}
@@ -157,9 +158,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="border-t border-ink-800 px-4 py-6 text-center text-xs text-ink-300 sm:px-6">
-        {t.footer}
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -14,6 +14,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>MyShare — TASI</title>
+    <script>
+      // Runs before first paint so a saved theme preference (or the OS
+      // preference, on a first visit) applies immediately — without this,
+      // ThemeProvider setting the attribute after React mounts would cause
+      // a visible flash from the default dark colors to the real theme.
+      (function () {
+        try {
+          var saved = localStorage.getItem("myshare-theme");
+          var theme = saved === "light" || saved === "dark" ? saved : null;
+          if (!theme && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+            theme = "light";
+          }
+          if (theme) document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

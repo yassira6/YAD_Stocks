@@ -4,6 +4,14 @@
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
   --font-arabic: "IBM Plex Sans Arabic", "Inter", system-ui, sans-serif;
 
+  /*
+   * Every color below is a semantic ROLE (page bg, card bg, border, muted
+   * text, primary text, accent-text-on-tint...), not a fixed swatch — the
+   * values here are the dark-theme values, and :root[data-theme="light"]
+   * below redefines the same variables to light-appropriate values so every
+   * existing bg-ink-900 / text-brand-300 / etc. utility across the app
+   * re-themes automatically with zero changes to component markup.
+   */
   --color-brand-50: #ecfdf5;
   --color-brand-100: #d1fae5;
   --color-brand-200: #a7f3d0;
@@ -33,6 +41,48 @@
   --color-bear: #f43f5e;
 }
 
+/* Light theme: same roles, light-appropriate values. brand-300/gold-400 are
+   darkened here specifically — they're used as text color on a translucent
+   tinted background (e.g. text-brand-300 on bg-brand-500/15), and the
+   dark-mode mint/amber shades that read fine on a near-black card would
+   fail contrast on the pale tint a light card produces. */
+:root[data-theme="light"] {
+  --color-brand-300: #047857;
+  --color-gold-400: #b45309;
+
+  --color-ink-950: #f4f6fa;
+  --color-ink-900: #ffffff;
+  --color-ink-850: #f2f4f9;
+  --color-ink-800: #e8ecf4;
+  --color-ink-700: #dbe1ec;
+  --color-ink-600: #c3ccdc;
+  --color-ink-500: #8b97b0;
+  --color-ink-300: #5b6b85;
+  --color-ink-200: #3d4a61;
+  --color-ink-100: #10192b;
+}
+
+/* Default to the OS preference when the user hasn't made an explicit choice
+   (no [data-theme] attribute yet) — matched by ThemeContext's inline
+   no-flash script in index.html, which sets the attribute before paint. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --color-brand-300: #047857;
+    --color-gold-400: #b45309;
+
+    --color-ink-950: #f4f6fa;
+    --color-ink-900: #ffffff;
+    --color-ink-850: #f2f4f9;
+    --color-ink-800: #e8ecf4;
+    --color-ink-700: #dbe1ec;
+    --color-ink-600: #c3ccdc;
+    --color-ink-500: #8b97b0;
+    --color-ink-300: #5b6b85;
+    --color-ink-200: #3d4a61;
+    --color-ink-100: #10192b;
+  }
+}
+
 html,
 body,
 #root {
@@ -46,6 +96,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 html[lang="ar"] body {
@@ -63,6 +114,21 @@ html[lang="ar"] body {
 .chart-container {
   width: 100%;
   overflow: hidden;
+}
+
+/* Native <button> defaults to cursor:default in most browsers (unlike <a>,
+   which is already pointer) — make every clickable control show a hand. */
+button:not(:disabled),
+a[href],
+[role="button"],
+[role="option"],
+[role="tab"],
+select {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 @supports (font-variation-settings: normal) {

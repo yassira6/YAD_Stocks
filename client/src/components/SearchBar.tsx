@@ -86,7 +86,7 @@ export function SearchBar({ onSelect }: Props) {
           aria-label={t.searchPlaceholder}
           aria-expanded={open}
           role="combobox"
-          className="w-full rounded-2xl border border-ink-600 bg-ink-800/80 py-3.5 text-[15px] text-white placeholder:text-ink-300 shadow-inner shadow-black/20 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 rtl:pr-11 rtl:pl-4 ltr:pl-11 ltr:pr-4"
+          className="w-full rounded-2xl border border-ink-600 bg-ink-800/80 py-3.5 text-[15px] text-ink-100 placeholder:text-ink-300 shadow-inner shadow-black/20 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 rtl:pr-11 rtl:pl-4 ltr:pl-11 ltr:pr-4"
         />
         {query && (
           <button
@@ -95,7 +95,7 @@ export function SearchBar({ onSelect }: Props) {
               setQuery("");
               setOpen(false);
             }}
-            className="absolute top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-300 hover:bg-ink-700 hover:text-white rtl:left-3 ltr:right-3"
+            className="absolute top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-300 hover:bg-ink-700 hover:text-ink-100 rtl:left-3 ltr:right-3"
             aria-label={t.clear}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -125,7 +125,7 @@ export function SearchBar({ onSelect }: Props) {
                     }`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-medium text-white">
+                      <span className="block truncate text-[15px] font-medium text-ink-100">
                         {r.isDirect
                           ? t.directCodeResult
                           : lang === "ar"

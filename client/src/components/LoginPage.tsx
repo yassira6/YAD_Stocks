@@ -26,7 +26,7 @@ export function LoginPage() {
     <div className="mx-auto max-w-sm">
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-6 text-center shadow-xl shadow-black/20 sm:p-8">
         <img src="/icon.svg" alt="" className="mx-auto h-14 w-14 rounded-2xl" />
-        <h2 className="mt-4 text-xl font-bold text-white">{t.loginTitle}</h2>
+        <h2 className="mt-4 text-xl font-bold text-ink-100">{t.loginTitle}</h2>
         <p className="mt-1.5 text-sm text-ink-300">{t.loginSubtitle}</p>
 
         {error && (
@@ -42,7 +42,7 @@ export function LoginPage() {
         <div className="mt-6 space-y-3">
           <a
             href="/auth/google"
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-ink-600 bg-white px-4 py-3 text-sm font-semibold text-ink-950 transition hover:bg-ink-100"
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-ink-600 bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path
@@ -64,7 +64,7 @@ export function LoginPage() {
 
           <a
             href="/auth/apple"
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-ink-600 bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink-950"
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-ink-600 bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-900"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="white">
               <path d="M16.365 1.43c0 1.14-.462 2.15-1.217 2.91-.83.84-2.19 1.48-3.29 1.39-.14-1.1.42-2.25 1.19-2.98.81-.79 2.23-1.38 3.32-1.32ZM20.6 17.13c-.53 1.22-.78 1.76-1.46 2.84-.95 1.5-2.29 3.37-3.95 3.39-1.47.02-1.85-.96-3.85-.95-2 .01-2.42.97-3.9.95-1.66-.02-2.93-1.71-3.88-3.2-2.66-4.17-2.94-9.06-1.3-11.67 1.17-1.87 3.02-2.97 4.75-2.97 1.77 0 2.88 1 4.34 1 1.42 0 2.28-1 4.34-1 1.54 0 3.17.84 4.33 2.29-3.8 2.09-3.18 7.53.58 9.32Z" />

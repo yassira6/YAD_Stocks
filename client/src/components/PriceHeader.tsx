@@ -24,7 +24,7 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-bold text-white sm:text-2xl">{name}</h2>
+            <h2 className="text-xl font-bold text-ink-100 sm:text-2xl">{name}</h2>
             <span className="rounded-lg bg-ink-700 px-2 py-0.5 font-mono text-xs font-semibold text-brand-300">
               {quote.code}
             </span>
@@ -47,7 +47,7 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-ink-300">{t.latestPrice}</p>
-          <p className="mt-1 text-4xl font-extrabold tabular-nums text-white sm:text-5xl">
+          <p className="mt-1 text-4xl font-extrabold tabular-nums text-ink-100 sm:text-5xl">
             {formatPrice(quote.regularMarketPrice, lang, quote.currency)}
           </p>
         </div>

@@ -7,6 +7,7 @@ import {
   type IChartApi,
 } from "lightweight-charts";
 import { useLanguage } from "../i18n/LanguageContext";
+import { useTheme } from "../lib/ThemeContext";
 import type { Bar } from "../types";
 
 // Candlestick charts are read chronologically left-to-right even in RTL apps
@@ -27,26 +28,45 @@ function lastMonth(bars: Bar[]): Bar[] {
   return bars.filter((b) => b.time >= cutoff);
 }
 
+// lightweight-charts renders to a <canvas>, so it needs real color values up
+// front — it can't pick up a CSS custom property the way Tailwind utility
+// classes do, hence a small light/dark palette here kept in sync by hand
+// with the ink-* tokens in index.css.
+const CHART_PALETTE = {
+  dark: {
+    text: "#a9b4d0",
+    grid: "rgba(255,255,255,0.05)",
+    border: "rgba(255,255,255,0.08)",
+  },
+  light: {
+    text: "#5b6b85",
+    grid: "rgba(16,25,43,0.06)",
+    border: "rgba(16,25,43,0.12)",
+  },
+};
+
 export function PriceChart({ series }: Props) {
   const { t } = useLanguage();
+  const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const palette = CHART_PALETTE[theme];
 
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#a9b4d0",
+        textColor: palette.text,
         fontFamily: "Inter, system-ui, sans-serif",
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.05)" },
-        horzLines: { color: "rgba(255,255,255,0.05)" },
+        vertLines: { color: palette.grid },
+        horzLines: { color: palette.grid },
       },
-      rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" },
-      timeScale: { borderColor: "rgba(255,255,255,0.08)" },
+      rightPriceScale: { borderColor: palette.border },
+      timeScale: { borderColor: palette.border },
       crosshair: { mode: 0 },
       autoSize: true,
     });
@@ -91,12 +111,12 @@ export function PriceChart({ series }: Props) {
       chartRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [series]);
+  }, [series, theme]);
 
   return (
     <div className="rounded-3xl border border-ink-700 bg-ink-900 p-4 shadow-xl shadow-black/20 sm:p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-base font-semibold text-white">{t.chartTitle}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.chartTitle}</h3>
         <p className="text-xs text-ink-300">{t.chartSubtitle}</p>
       </div>
       <div ref={containerRef} dir="ltr" className="chart-container h-[280px] w-full sm:h-[360px]" />

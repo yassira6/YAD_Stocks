@@ -127,6 +127,9 @@ export const translations = {
     totalUsers: "Users",
     totalAlerts: "Alerts",
     totalCompanies: "Companies",
+    toggleThemeToLight: "Switch to light theme",
+    toggleThemeToDark: "Switch to dark theme",
+    version: "Version",
   },
   ar: {
     appName: "MyShare",
@@ -256,6 +259,9 @@ export const translations = {
     totalUsers: "المستخدمون",
     totalAlerts: "التنبيهات",
     totalCompanies: "الشركات",
+    toggleThemeToLight: "التبديل إلى الوضع الفاتح",
+    toggleThemeToDark: "التبديل إلى الوضع الداكن",
+    version: "الإصدار",
   },
 };
 

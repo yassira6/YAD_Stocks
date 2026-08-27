@@ -62,25 +62,25 @@ export function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h2 className="text-xl font-bold text-white sm:text-2xl">{t.adminTitle}</h2>
+      <h2 className="text-xl font-bold text-ink-100 sm:text-2xl">{t.adminTitle}</h2>
 
       {loading && <p className="text-sm text-ink-300">{t.loading}</p>}
       {error && <p className="text-sm text-bear">{error}</p>}
 
       {status && (
         <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-          <h3 className="text-base font-semibold text-white">{t.adminStatusTitle}</h3>
+          <h3 className="text-base font-semibold text-ink-100">{t.adminStatusTitle}</h3>
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             <div className="rounded-2xl border border-ink-700 bg-ink-850 py-3">
-              <p className="text-2xl font-bold text-white">{status.totalUsers}</p>
+              <p className="text-2xl font-bold text-ink-100">{status.totalUsers}</p>
               <p className="text-xs text-ink-300">{t.totalUsers}</p>
             </div>
             <div className="rounded-2xl border border-ink-700 bg-ink-850 py-3">
-              <p className="text-2xl font-bold text-white">{status.totalAlerts}</p>
+              <p className="text-2xl font-bold text-ink-100">{status.totalAlerts}</p>
               <p className="text-xs text-ink-300">{t.totalAlerts}</p>
             </div>
             <div className="rounded-2xl border border-ink-700 bg-ink-850 py-3">
-              <p className="text-2xl font-bold text-white">{status.totalCompanies || companies.length}</p>
+              <p className="text-2xl font-bold text-ink-100">{status.totalCompanies || companies.length}</p>
               <p className="text-xs text-ink-300">{t.totalCompanies}</p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export function AdminPage() {
       )}
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-        <h3 className="text-base font-semibold text-white">{t.adminUsersTitle}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.adminUsersTitle}</h3>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[480px] text-start text-sm">
             <tbody className="divide-y divide-ink-800">
@@ -133,7 +133,7 @@ export function AdminPage() {
       </div>
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
-        <h3 className="text-base font-semibold text-white">{t.adminAlertsTitle}</h3>
+        <h3 className="text-base font-semibold text-ink-100">{t.adminAlertsTitle}</h3>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[560px] text-start text-sm">
             <tbody className="divide-y divide-ink-800">
