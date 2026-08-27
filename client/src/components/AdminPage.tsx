@@ -3,6 +3,7 @@ import { useLanguage } from "../i18n/LanguageContext";
 import { useAuth } from "../lib/AuthContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { formatDateTime, formatPrice } from "../lib/format";
+import { sendUserEmail } from "../lib/api";
 import type { AdminStatus, PriceAlert, User } from "../types";
 
 function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
@@ -17,6 +18,92 @@ function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
   );
 }
 
+function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) {
+  const { t } = useLanguage();
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<"sent" | "failed" | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  async function submit() {
+    setSending(true);
+    setResult(null);
+    setErrorMsg(null);
+    try {
+      await sendUserEmail(user.id, { subject, body });
+      setResult("sent");
+    } catch (err) {
+      setResult("failed");
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/40 sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-base font-semibold text-ink-100">
+          {t.adminSendEmail} — {user.name || user.email}
+        </h3>
+        <p className="mt-1 text-xs text-ink-300">{user.email}</p>
+
+        <div className="mt-4 space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-ink-300">{t.adminEmailSubject}</label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              maxLength={200}
+              className="w-full rounded-xl border border-ink-600 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-brand-500"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-ink-300">{t.adminEmailBody}</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              maxLength={10000}
+              rows={6}
+              className="w-full rounded-xl border border-ink-600 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-brand-500"
+            />
+          </div>
+        </div>
+
+        {result === "sent" && <p className="mt-3 text-sm font-semibold text-brand-300">{t.adminEmailSent}</p>}
+        {result === "failed" && (
+          <p className="mt-3 text-sm font-semibold text-bear">
+            {t.adminEmailFailed} {errorMsg ? `(${errorMsg})` : ""}
+          </p>
+        )}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-full border border-ink-600 px-4 py-2 text-sm font-semibold text-ink-200 transition hover:border-ink-500"
+          >
+            {t.cancel}
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={sending || !subject.trim() || !body.trim()}
+            className="cursor-pointer rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {sending ? t.adminEmailSending : t.adminEmailSend}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const { t, lang } = useLanguage();
   const { user, loading: authLoading } = useAuth();
@@ -26,6 +113,7 @@ export function AdminPage() {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emailTarget, setEmailTarget] = useState<User | null>(null);
 
   useEffect(() => {
     if (authLoading || !user?.isAdmin) return;
@@ -92,6 +180,14 @@ export function AdminPage() {
             <span className="ms-3 text-xs text-ink-300">{t.adminAppleConfigured}:</span>
             <StatusPill ok={status.appleConfigured} yes={t.configuredYes} no={t.configuredNo} />
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-xs text-ink-300">{t.adminPriceSource}:</span>
+            <span className="rounded-full bg-ink-700 px-2.5 py-1 text-xs font-semibold text-ink-200">
+              {status.priceSource}
+            </span>
+            <span className="ms-3 text-xs text-ink-300">{t.adminMarketStatus}:</span>
+            <StatusPill ok={status.marketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
+          </div>
         </div>
       )}
 
@@ -125,12 +221,23 @@ export function AdminPage() {
                     )}
                   </td>
                   <td className="py-2.5 text-xs text-ink-300/80">{formatDateTime(u.lastLoginAt, lang)}</td>
+                  <td className="py-2.5 ps-3">
+                    <button
+                      type="button"
+                      onClick={() => setEmailTarget(u)}
+                      className="cursor-pointer rounded-full border border-ink-600 px-3 py-1 text-xs font-semibold text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
+                    >
+                      {t.adminSendEmail}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {emailTarget && <SendEmailModal user={emailTarget} onClose={() => setEmailTarget(null)} />}
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
         <h3 className="text-base font-semibold text-ink-100">{t.adminAlertsTitle}</h3>

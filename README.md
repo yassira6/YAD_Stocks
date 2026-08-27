@@ -162,6 +162,82 @@ Basic abuse protection only (this is not a hardened multi-tenant SaaS):
 alert creation is rate-limited per IP, and capped at 20 active alerts per
 account.
 
+### Testing SMTP delivery
+
+The quickest way to confirm SMTP is actually working, once you've set
+`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` (etc.) in Railway: sign in as the admin,
+open the **Admin** page, find your own row in the Users table, click **Send
+email**, and send yourself a test message (see "Admin: emailing a user
+directly" below) — a real message through the same `sendMail()` path alert
+emails use. `smtpConfigured` on the Admin status card also just reflects
+whether those env vars are set, not whether a send has actually succeeded.
+
+### Admin: emailing a user directly
+
+From the Admin page, each row in the Users table has a **Send email**
+button that opens a free-text subject + message composer and sends a real
+email to that user's account address via the same SMTP configuration as
+alert emails (`server/lib/mailer.js`'s `sendMail()`). Every attempt —
+success or failure, with the error if it failed — is written to an
+`admin_emails` audit table (`server/lib/adminEmails.js`) so there's a record
+of what was sent to whom. Without SMTP configured, the send fails with
+`smtp_not_configured` and that failure is still logged, same as alert
+emails.
+
+## Price source configuration
+
+Prices are fetched through a small provider registry
+(`server/lib/priceProvider.js`) rather than every caller importing Yahoo
+Finance directly, so a different source can be added later without
+touching `server/index.js`, the alert scheduler, or the backtester.
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `PRICE_SOURCE` | optional | Defaults to `yahoo`, currently the only implemented provider. An unrecognized value logs a warning at startup and falls back to `yahoo` rather than failing to boot. |
+
+Adding a real second provider means implementing a module with the same
+`fetchHistory(code, options)` shape as `server/lib/yahooProxy.js`,
+registering it in the `PROVIDERS` map in `priceProvider.js`, and providing
+whatever credentials that source needs — tell me which provider and I can
+wire it in. The current Admin page shows which source is active
+(`priceSource` on `/api/admin/status`).
+
+## Market hours (TASI) & the "Market Closed" state
+
+The Saudi Exchange trades Sunday–Thursday, roughly 10:00–15:00 Riyadh time
+(`server/lib/marketHours.js`, using `Intl.DateTimeFormat` with
+`timeZone: "Asia/Riyadh"` — no external date library, no network call).
+Outside that window:
+
+- Every quote response carries `marketOpen: false` and a
+  `marketCloseReason` (`weekend` / `after_hours` / `holiday`), and the price
+  header shows a **"Market Closed"** badge instead of the live/demo badge,
+  so a closing price is never presented as if it were live.
+- The frontend stops polling every 60 seconds and switches to a slow
+  15-minute check (just enough to notice the market reopening) — see
+  `REFRESH_INTERVAL_MS` / `CLOSED_REFRESH_INTERVAL_MS` in `client/src/App.tsx`.
+- The backend's quote cache TTL extends from 60 seconds to 30 minutes while
+  closed, and the alert-checking scheduler (`alertScheduler.js`) skips its
+  run entirely (`skipped: "market_closed"`) rather than re-checking prices
+  that can't have changed.
+
+Saudi/Islamic holidays are **not** hardcoded (dates shift yearly on the
+Hijri calendar and can't be reliably verified from this environment) — set
+them manually instead:
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `MARKET_HOLIDAYS` | optional | Comma-separated `YYYY-MM-DD` dates (Riyadh calendar day) treated as closed even during normal trading hours/weekdays, e.g. `2026-03-20,2026-03-21,2026-03-22`. |
+
+## Chart: viewing more history
+
+The chart now fetches and loads up to **2 years** of daily bars (previously
+6 months), but still opens on the last ~30 days by default for a readable
+initial view (`client/src/components/PriceChart.tsx`, via
+`chart.timeScale().setVisibleRange(...)` rather than filtering the dataset).
+Scrolling or zooming out on the chart reveals the rest of the already-loaded
+history instead of an empty canvas.
+
 ## Persistence (important for Railway)
 
 The SQLite file (`server/data/myshare.db` by default, override with
@@ -171,7 +247,10 @@ ephemeral across redeploys** unless you attach a
 company directory's growth, every alert, and **every signed-in user account
 and session** all reset on the next deploy (everyone would need to sign in
 again). To persist: add a Volume to the service, mount it at e.g. `/data`,
-and set `DB_PATH=/data/myshare.db`.
+and set `DB_PATH=/data/myshare.db`. If `DB_PATH` isn't set, the server now
+prints a loud warning banner in the deploy logs on startup as a reminder —
+this is a Railway dashboard configuration step, not something the code can
+force on its own.
 
 ## Deploying (Railway, or any single-service Node host)
 

@@ -18,14 +18,15 @@ interface Props {
   series: Bar[];
 }
 
-// The user asked to see "the chart for the last month" — the backend fetches a
-// longer history so indicators (SMA50, MFI, CMF...) are statistically sound,
-// this component slices that down to the requested last-month view.
-function lastMonth(bars: Bar[]): Bar[] {
-  if (bars.length === 0) return bars;
+// The requested default view is "the chart for the last month", but the
+// backend fetches up to 2 years of history (for indicator soundness, and so
+// there's real data to reveal when the user zooms/scrolls out) — so all of
+// it is loaded into the chart, and only the *initial visible range* is
+// constrained to the last month via setVisibleRange below, not the dataset.
+function lastMonthRange(bars: Bar[]): { from: Bar["time"]; to: Bar["time"] } | null {
+  if (bars.length === 0) return null;
   const lastTime = bars[bars.length - 1].time;
-  const cutoff = lastTime - 32 * 24 * 60 * 60;
-  return bars.filter((b) => b.time >= cutoff);
+  return { from: (lastTime - 32 * 24 * 60 * 60) as Bar["time"], to: lastTime };
 }
 
 // lightweight-charts renders to a <canvas>, so it needs real color values up
@@ -92,19 +93,23 @@ export function PriceChart({ series }: Props) {
       scaleMargins: { top: 0.08, bottom: 0.25 },
     });
 
-    const bars = lastMonth(series);
     candleSeries.setData(
-      bars.map((b) => ({ time: b.time as never, open: b.open, high: b.high, low: b.low, close: b.close }))
+      series.map((b) => ({ time: b.time as never, open: b.open, high: b.high, low: b.low, close: b.close }))
     );
     volumeSeries.setData(
-      bars.map((b) => ({
+      series.map((b) => ({
         time: b.time as never,
         value: b.volume,
         color: b.close >= b.open ? "rgba(34,197,94,0.5)" : "rgba(244,63,94,0.5)",
       }))
     );
 
-    chart.timeScale().fitContent();
+    const initialRange = lastMonthRange(series);
+    if (initialRange) {
+      chart.timeScale().setVisibleRange(initialRange as never);
+    } else {
+      chart.timeScale().fitContent();
+    }
 
     return () => {
       chart.remove();

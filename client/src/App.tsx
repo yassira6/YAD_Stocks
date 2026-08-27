@@ -19,6 +19,10 @@ import type { QuoteResponse } from "./types";
 // this just re-serves the same cached numbers, so it's the fastest interval
 // that actually buys fresher data instead of wasted requests.
 const REFRESH_INTERVAL_MS = 60_000;
+// While the market's closed nothing is going to change, so there's no point
+// polling every minute — this just needs to be short enough to notice the
+// market reopening in a reasonable time.
+const CLOSED_REFRESH_INTERVAL_MS = 15 * 60_000;
 
 export default function App() {
   const { t } = useLanguage();
@@ -32,6 +36,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const codeRef = useRef<string | null>(null);
   const knownCodesRef = useRef<Set<string>>(new Set());
+  const quoteRef = useRef<QuoteResponse | null>(null);
 
   useEffect(() => {
     const onHashChange = () => setView(parseHash().view);
@@ -54,6 +59,7 @@ export default function App() {
         // Ignore a stale response landing after the user already switched companies.
         if (codeRef.current !== c) return;
         setQuote(data);
+        quoteRef.current = data;
         setLastUpdated(Date.now());
         setError(null);
         // A live lookup for a code outside our loaded directory means the
@@ -79,11 +85,27 @@ export default function App() {
 
   useEffect(() => {
     codeRef.current = code;
+    quoteRef.current = null;
     if (!code) return;
-    load(code);
 
-    const interval = setInterval(() => load(code, { silent: true }), REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function tick(first: boolean) {
+      if (cancelled) return;
+      await load(code!, first ? undefined : { silent: true });
+      if (cancelled) return;
+      // Adapts to what the last response reported — no point polling every
+      // minute while the market's closed and nothing can have changed.
+      const delay = quoteRef.current?.marketOpen === false ? CLOSED_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS;
+      timer = setTimeout(() => tick(false), delay);
+    }
+    tick(true);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [code, load]);
 
   const company = code ? companies.find((c) => c.code === code) ?? null : null;

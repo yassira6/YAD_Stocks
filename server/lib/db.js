@@ -9,6 +9,20 @@ import fs from "node:fs";
 const DEFAULT_DB_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "myshare.db");
 const DB_PATH = process.env.DB_PATH || DEFAULT_DB_PATH;
 
+if (!process.env.DB_PATH) {
+  // Not necessarily wrong (fine for local dev), but on Railway this path is
+  // on the container's ephemeral disk — every redeploy wipes it, taking
+  // every user account, session, and alert with it. Loud on purpose.
+  console.warn(
+    "=".repeat(78) +
+      "\n[db] DB_PATH is not set — using the in-container default, which does NOT\n" +
+      "     survive a redeploy on Railway. If this is production, attach a Volume\n" +
+      "     and set DB_PATH (see README “Persistence”) or every user, session,\n" +
+      "     and alert will be lost on the next deploy.\n" +
+      "=".repeat(78)
+  );
+}
+
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 export const db = new DatabaseSync(DB_PATH);
@@ -58,6 +72,17 @@ db.exec(`
     user_id TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS admin_emails (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    sent_by TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    sent INTEGER,
+    error TEXT,
+    created_at INTEGER NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_alerts_email ON alerts(email);

@@ -5,7 +5,7 @@ import NodeCache from "node-cache";
 import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
-import { fetchHistory } from "./lib/yahooProxy.js";
+import { fetchHistory } from "./lib/priceProvider.js";
 import { analyzeSeries } from "./lib/analysis.js";
 import { generateDemoHistory } from "./lib/demoData.js";
 import { seedCompanies, listCompanies, touchCompanyFromLiveQuote } from "./lib/companies.js";
@@ -14,6 +14,7 @@ import { startAlertScheduler } from "./lib/alertScheduler.js";
 import { authRouter } from "./lib/authRoutes.js";
 import { adminRouter } from "./lib/adminRoutes.js";
 import { requireAuth, optionalAuth } from "./lib/auth.js";
+import { getMarketStatus } from "./lib/marketHours.js";
 
 const app = express();
 const PORT = process.env.PORT || 5174;
@@ -92,7 +93,9 @@ app.get("/api/quote/:code", async (req, res) => {
   let liveError = null;
 
   try {
-    history = await fetchHistory(code, { range: "6mo", interval: "1d" });
+    // 2y (not just the ~6mo the analysis needs) so the chart has real data
+    // to reveal when the user zooms/scrolls out past the initial last-month view.
+    history = await fetchHistory(code, { range: "2y", interval: "1d" });
     if (!history.series.length) throw new Error("Empty series returned");
     // Grow the searchable directory from real, confirmed-live lookups only —
     // never from the demo fallback below, which would otherwise let a typo'd
@@ -101,13 +104,17 @@ app.get("/api/quote/:code", async (req, res) => {
   } catch (err) {
     liveError = err.message;
     console.error(`live quote fetch failed for ${code}, falling back to demo data:`, err.message);
-    history = generateDemoHistory(code);
+    history = generateDemoHistory(code, { days: 500 });
     dataSource = "demo";
   }
 
   const analysis = analyzeSeries(history.series);
-  const payload = { ...history, analysis, dataSource, liveError };
-  cache.set(cacheKey, payload);
+  const market = getMarketStatus();
+  const payload = { ...history, analysis, dataSource, liveError, marketOpen: market.open, marketCloseReason: market.reason };
+  // While the market's closed, nothing here can change — cache much longer
+  // so auto-refreshes (and other visitors looking at the same code) don't
+  // re-hit the upstream provider for no reason.
+  cache.set(cacheKey, payload, market.open ? 60 : 1800);
   res.json(payload);
 });
 

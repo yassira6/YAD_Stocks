@@ -38,3 +38,14 @@ export async function fetchMyAlerts(): Promise<PriceAlert[]> {
 export async function cancelAlert(id: string): Promise<void> {
   await unwrap(await fetch(`/api/alerts/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" }));
 }
+
+export async function sendUserEmail(userId: string, input: { subject: string; body: string }): Promise<{ sent: boolean }> {
+  return unwrap(
+    await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    })
+  );
+}

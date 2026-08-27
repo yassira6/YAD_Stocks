@@ -1,6 +1,7 @@
-import { fetchHistory } from "./yahooProxy.js";
+import { fetchHistory } from "./priceProvider.js";
 import { getCompany } from "./companies.js";
 import { sendAlertEmail } from "./mailer.js";
+import { isMarketOpen } from "./marketHours.js";
 import {
   listActiveAlertCodes,
   listActiveAlertsForCode,
@@ -17,6 +18,8 @@ import {
  * stay active and get picked up on a later successful check.
  */
 export async function checkAlertsOnce() {
+  if (!isMarketOpen()) return { checkedCodes: 0, triggered: 0, skipped: "market_closed" };
+
   const codes = listActiveAlertCodes();
   if (codes.length === 0) return { checkedCodes: 0, triggered: 0 };
 

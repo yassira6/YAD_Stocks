@@ -79,6 +79,10 @@ export function listAllUsers() {
   return listUsersStmt.all().map(rowToUser);
 }
 
+export function getUserById(id) {
+  return rowToUser(getUserStmt.get(id));
+}
+
 export function cookieOptions() {
   return {
     httpOnly: true,

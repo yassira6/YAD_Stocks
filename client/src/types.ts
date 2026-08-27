@@ -83,6 +83,8 @@ export interface QuoteResponse {
   analysis: Analysis;
   dataSource: "live" | "demo";
   liveError: string | null;
+  marketOpen: boolean;
+  marketCloseReason: "weekend" | "after_hours" | "holiday" | null;
 }
 
 export type AlertDirection = "buy" | "sell";
@@ -124,4 +126,6 @@ export interface AdminStatus {
   totalUsers: number;
   totalAlerts: number;
   totalCompanies: number;
+  priceSource: string;
+  marketOpen: boolean;
 }

@@ -18,6 +18,26 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
 
 export const isEmailConfigured = () => transporter !== null;
 
+/**
+ * Low-level send, shared by the alert-trigger email and the admin free-text
+ * email. Never throws — a delivery failure (or SMTP being unconfigured) is
+ * reported back as { sent: false, reason } so the caller can record it,
+ * rather than taking down whatever loop or request triggered the send.
+ */
+export async function sendMail({ to, subject, text }) {
+  if (!transporter) {
+    console.warn(`[mailer] (not sent, SMTP unconfigured) to=${to} subject="${subject}"`);
+    return { sent: false, reason: "smtp_not_configured" };
+  }
+  try {
+    await transporter.sendMail({ from: MAIL_FROM || SMTP_USER, to, subject, text });
+    return { sent: true };
+  } catch (err) {
+    console.error(`[mailer] failed to send to ${to}:`, err.message);
+    return { sent: false, reason: err.message };
+  }
+}
+
 function alertEmailContent(alert, company, currentPrice) {
   const name = company ? (alert.lang === "ar" ? company.nameAr || company.nameEn : company.nameEn) : alert.code;
   const link = APP_URL ? `${APP_URL.replace(/\/$/, "")}/?code=${alert.code}` : null;
@@ -60,22 +80,5 @@ function alertEmailContent(alert, company, currentPrice) {
  */
 export async function sendAlertEmail(alert, company, currentPrice) {
   const { subject, text } = alertEmailContent(alert, company, currentPrice);
-
-  if (!transporter) {
-    console.warn(`[mailer] (not sent, SMTP unconfigured) to=${alert.email} subject="${subject}"`);
-    return { sent: false, reason: "smtp_not_configured" };
-  }
-
-  try {
-    await transporter.sendMail({
-      from: MAIL_FROM || SMTP_USER,
-      to: alert.email,
-      subject,
-      text,
-    });
-    return { sent: true };
-  } catch (err) {
-    console.error(`[mailer] failed to send alert email to ${alert.email}:`, err.message);
-    return { sent: false, reason: err.message };
-  }
+  return sendMail({ to: alert.email, subject, text });
 }

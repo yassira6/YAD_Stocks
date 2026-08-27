@@ -26,7 +26,7 @@
 // for numbers that actually mean something; the script already prefers
 // live data automatically whenever fetchHistory() succeeds.
 
-import { fetchHistory } from "../lib/yahooProxy.js";
+import { fetchHistory } from "../lib/priceProvider.js";
 import { generateDemoHistory } from "../lib/demoData.js";
 import { analyzeSeries } from "../lib/analysis.js";
 

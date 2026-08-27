@@ -32,16 +32,22 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
           {sector && <p className="mt-1 text-sm text-ink-300">{sector}</p>}
         </div>
 
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            quote.dataSource === "live"
-              ? "bg-brand-500/15 text-brand-300 ring-1 ring-inset ring-brand-500/30"
-              : "bg-gold-500/15 text-gold-400 ring-1 ring-inset ring-gold-500/30"
-          }`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${quote.dataSource === "live" ? "bg-brand-400" : "bg-gold-400"}`} />
-          {quote.dataSource === "live" ? t.liveBadge : t.demoBannerTitle}
-        </span>
+        {quote.dataSource === "demo" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-500/15 px-3 py-1 text-xs font-semibold text-gold-400 ring-1 ring-inset ring-gold-500/30">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+            {t.demoBannerTitle}
+          </span>
+        ) : !quote.marketOpen ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-700 px-3 py-1 text-xs font-semibold text-ink-200 ring-1 ring-inset ring-ink-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-ink-300" />
+            {t.marketClosedBadge}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-500/15 px-3 py-1 text-xs font-semibold text-brand-300 ring-1 ring-inset ring-brand-500/30">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-400" />
+            {t.liveBadge}
+          </span>
+        )}
       </div>
 
       <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
@@ -75,8 +81,12 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
 
         <div className="flex items-center gap-2 text-xs text-ink-300">
           <span className="inline-flex items-center gap-1">
-            <span className={`h-1.5 w-1.5 rounded-full bg-brand-400 ${refreshing ? "animate-pulse" : ""}`} />
-            {refreshing ? t.refreshing : t.autoRefreshNote}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                !quote.marketOpen ? "bg-ink-500" : refreshing ? "animate-pulse bg-brand-400" : "bg-brand-400"
+              }`}
+            />
+            {!quote.marketOpen ? t.marketClosedNote : refreshing ? t.refreshing : t.autoRefreshNote}
           </span>
           {onRefresh && (
             <button
