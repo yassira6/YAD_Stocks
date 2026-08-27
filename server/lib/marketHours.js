@@ -1,29 +1,43 @@
-// Saudi Exchange (Tadawul) main continuous trading session: Sunday-Thursday,
-// 10:00-15:00 Asia/Riyadh (no DST). This is a deterministic weekday/hours
-// check only — I could not verify the exact current session times or the
-// official 2026 Tadawul holiday calendar against a live source from this
-// environment (see README), so treat the exact cutoff times as "likely
-// correct, worth double-checking against saudiexchange.sa" rather than
-// guaranteed, and use MARKET_HOLIDAYS below for anything this misses
-// (Eid, National Day, etc. — the Hijri-calendar ones move every year, so
-// they can't be hardcoded reliably without a live calendar source either).
-const OPEN_HOUR = 10;
-const CLOSE_HOUR = 15;
-const TRADING_WEEKDAYS = new Set([0, 1, 2, 3, 4]); // Sun=0 .. Thu=4 in this formatter's numbering
+// Trading-hours detection for every market this app supports. Deterministic
+// weekday/hours checks only — I could not verify exact session times or the
+// official current-year holiday calendars for either exchange against a live
+// source from this environment, so treat the cutoffs as "likely correct,
+// worth double-checking against saudiexchange.sa / nasdaq.com" rather than
+// guaranteed, and use the *_MARKET_HOLIDAYS env vars below for anything this
+// misses (moving religious/national holidays can't be hardcoded reliably
+// without a live calendar source either).
+const MARKETS = {
+  // Saudi Exchange (Tadawul) main continuous session: Sunday-Thursday, 10:00-15:00 Asia/Riyadh (no DST).
+  TASI: {
+    openMinutes: 10 * 60,
+    closeMinutes: 15 * 60,
+    weekdays: new Set([0, 1, 2, 3, 4]), // Sun=0 .. Thu=4 in this formatter's numbering
+    timeZone: "Asia/Riyadh",
+    holidaysEnv: "MARKET_HOLIDAYS",
+  },
+  // NYSE/NASDAQ regular session: Monday-Friday, 9:30-16:00 America/New_York (handles DST automatically).
+  US: {
+    openMinutes: 9 * 60 + 30,
+    closeMinutes: 16 * 60,
+    weekdays: new Set([1, 2, 3, 4, 5]),
+    timeZone: "America/New_York",
+    holidaysEnv: "US_MARKET_HOLIDAYS",
+  },
+};
 
-// MARKET_HOLIDAYS="2026-03-20,2026-09-23" (Riyadh-local calendar dates, comma-separated)
-function getHolidaySet() {
+// e.g. MARKET_HOLIDAYS="2026-03-20,2026-09-23" (local calendar dates for that market, comma-separated)
+function getHolidaySet(envVar) {
   return new Set(
-    (process.env.MARKET_HOLIDAYS || "")
+    (process.env[envVar] || "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
   );
 }
 
-function riyadhParts(date) {
+function localParts(date, timeZone) {
   const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Riyadh",
+    timeZone,
     weekday: "short",
     year: "numeric",
     month: "2-digit",
@@ -42,22 +56,28 @@ function riyadhParts(date) {
   };
 }
 
-/** Is the TASI main session open right now (or at the given date)? */
-export function isMarketOpen(date = new Date()) {
-  const { weekday, isoDate, hour, minute } = riyadhParts(date);
-  if (!TRADING_WEEKDAYS.has(weekday)) return false;
-  if (getHolidaySet().has(isoDate)) return false;
-  const minutesNow = hour * 60 + minute;
-  return minutesNow >= OPEN_HOUR * 60 && minutesNow < CLOSE_HOUR * 60;
+function marketConfig(market) {
+  return MARKETS[market] || MARKETS.TASI;
 }
 
-export function getMarketStatus(date = new Date()) {
-  const { weekday, isoDate } = riyadhParts(date);
-  const open = isMarketOpen(date);
+/** Is the given market's regular session open right now (or at the given date)? */
+export function isMarketOpen(market = "TASI", date = new Date()) {
+  const cfg = marketConfig(market);
+  const { weekday, isoDate, hour, minute } = localParts(date, cfg.timeZone);
+  if (!cfg.weekdays.has(weekday)) return false;
+  if (getHolidaySet(cfg.holidaysEnv).has(isoDate)) return false;
+  const minutesNow = hour * 60 + minute;
+  return minutesNow >= cfg.openMinutes && minutesNow < cfg.closeMinutes;
+}
+
+export function getMarketStatus(market = "TASI", date = new Date()) {
+  const cfg = marketConfig(market);
+  const { weekday, isoDate } = localParts(date, cfg.timeZone);
+  const open = isMarketOpen(market, date);
   let reason = null;
   if (!open) {
-    if (getHolidaySet().has(isoDate)) reason = "holiday";
-    else if (!TRADING_WEEKDAYS.has(weekday)) reason = "weekend";
+    if (getHolidaySet(cfg.holidaysEnv).has(isoDate)) reason = "holiday";
+    else if (!cfg.weekdays.has(weekday)) reason = "weekend";
     else reason = "after_hours";
   }
   return { open, reason, checkedAt: date.toISOString() };

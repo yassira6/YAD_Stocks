@@ -72,26 +72,59 @@ historical price/volume data, shown as such in the app itself.
 
 ## Data source, the dynamic company directory & known limitations
 
-- Prices come from Yahoo Finance's public chart endpoint using the `.SR`
-  suffix Yahoo uses for Tadawul tickers (e.g. `2222.SR` for Saudi Aramco).
-- The directory starts from a curated seed (`server/data/companies.json`,
-  ~86 well-known TASI names, compiled from general knowledge rather than a
-  scraped live source — treat it as "likely correct, verify before trading")
-  loaded into the `companies` table on first run. **It grows on its own**:
-  every time `/api/quote/:code` gets a real (non-demo) response from Yahoo,
-  that company is added or refreshed in the database — new row if the code
-  wasn't known yet (named from Yahoo's own `longName`/`shortName`, which has
-  no Arabic translation, so `nameAr` is `null` until someone corrects it),
-  updated `last_price`/`last_checked_at` either way. A code is **only** ever
-  written to the directory from a confirmed-live lookup, never from the demo
-  fallback below — otherwise a typo'd or fake code could get "confirmed" into
-  search results via synthetic data. Searching by a raw 3-5 digit code always
-  works for fetching a quote even before it's in the directory.
+- Prices come from Yahoo Finance's public chart endpoint. **TASI** (Tadawul)
+  codes use the `.SR` suffix Yahoo expects (e.g. `2222.SR` for Saudi Aramco);
+  **US** tickers (NASDAQ/NYSE — see "US stocks" below) are passed through
+  as-is (e.g. `AAPL`). `server/lib/markets.js` is what decides which is
+  which: a 3-5 digit number is TASI, 1-5 letters (optionally with a
+  share-class suffix like `BRK.B`) is US.
+- The directory starts from two curated seeds — `server/data/companies.json`
+  (~86 well-known TASI names) and `server/data/companies_us.json` (~100
+  well-known NASDAQ/S&P 500 names) — both compiled from general knowledge
+  rather than a scraped live source, so treat them as "likely correct,
+  verify before trading" and **not** the complete current index membership.
+  They're loaded into the `companies` table (tagged `market: "TASI" | "US"`)
+  on first run. **The directory grows on its own** either way: every time
+  `/api/quote/:code` gets a real (non-demo) response from Yahoo, that company
+  is added or refreshed in the database — new row if the code wasn't known
+  yet (named from Yahoo's own `longName`/`shortName`, which has no Arabic
+  translation, so `nameAr` is `null` until someone corrects it), updated
+  `last_price`/`last_checked_at` either way. A code is **only** ever written
+  to the directory from a confirmed-live lookup, never from the demo fallback
+  below — otherwise a typo'd or fake code could get "confirmed" into search
+  results via synthetic data. Searching by a raw code/ticker always works for
+  fetching a quote even before it's in the directory — the seed lists just
+  make it show up by *name* search before anyone has looked it up.
 - If the backend can't reach Yahoo Finance (e.g. blocked network, rate
   limiting), it automatically falls back to clearly-labeled **demo data**
-  (a synthetic price series) so the UI stays usable for preview — every
-  screen shows a prominent "Demo data — not live prices" banner in that
-  case, and the API response carries `dataSource: "demo"`.
+  (a synthetic price series, in the right currency for the detected market)
+  so the UI stays usable for preview — every screen shows a prominent "Demo
+  data — not live prices" banner in that case, and the API response carries
+  `dataSource: "demo"`.
+
+## US stocks (NASDAQ / S&P 500)
+
+Search and analysis work the same way for US-listed tickers as for TASI —
+same chart, same technical + money-flow scoring, same buy/sell price
+targets, same alerts, just in USD instead of SAR (`quote.currency` /
+`quote.market` drive this throughout the UI and in alert emails, so nothing
+is hardcoded to SAR). A few things worth knowing:
+
+- The seed list (`server/data/companies_us.json`) is a curated ~100-name
+  starter set spanning major sectors (mega-cap tech, financials, health
+  care, energy, etc.) — **not** the literal current S&P 500 or NASDAQ
+  membership list, which changes over time and isn't something I could
+  verify live from this environment. Any valid ticker not in the list still
+  works via direct lookup (type it exactly, e.g. `PLTR`); it gets added to
+  the directory automatically the first time it's looked up live.
+- Market hours use the NYSE/NASDAQ regular session — Monday-Friday,
+  9:30-16:00 `America/New_York` (DST-aware via `Intl`) — completely
+  independent from TASI's Sunday-Thursday Riyadh-time session. See "Market
+  hours" below; `US_MARKET_HOLIDAYS` is the US equivalent of
+  `MARKET_HOLIDAYS`.
+- Alerts and the alert-checking scheduler work identically for US tickers;
+  the scheduler now evaluates each alert's own market hours independently,
+  so TASI alerts can be checked while NASDAQ is closed and vice versa.
 
 ## Sign-in (Google & Apple) and the admin account
 
@@ -202,32 +235,44 @@ whatever credentials that source needs — tell me which provider and I can
 wire it in. The current Admin page shows which source is active
 (`priceSource` on `/api/admin/status`).
 
-## Market hours (TASI) & the "Market Closed" state
+## Market hours (TASI & US) & the "Market Closed" state
 
-The Saudi Exchange trades Sunday–Thursday, roughly 10:00–15:00 Riyadh time
-(`server/lib/marketHours.js`, using `Intl.DateTimeFormat` with
-`timeZone: "Asia/Riyadh"` — no external date library, no network call).
-Outside that window:
+`server/lib/marketHours.js` tracks two independent sessions (using
+`Intl.DateTimeFormat` with an explicit `timeZone` — no external date
+library, no network call, and each is DST-aware for its own timezone):
 
-- Every quote response carries `marketOpen: false` and a
-  `marketCloseReason` (`weekend` / `after_hours` / `holiday`), and the price
-  header shows a **"Market Closed"** badge instead of the live/demo badge,
-  so a closing price is never presented as if it were live.
+- **TASI** (Saudi Exchange): Sunday–Thursday, roughly 10:00–15:00
+  `Asia/Riyadh`.
+- **US** (NYSE/NASDAQ): Monday–Friday, 9:30–16:00 `America/New_York`.
+
+Which session applies is decided per-code (a numeric code → TASI, a ticker
+→ US — see "US stocks" above). Outside a code's own session:
+
+- Its quote response carries `marketOpen: false` and a `marketCloseReason`
+  (`weekend` / `after_hours` / `holiday`), and the price header shows a
+  **"Market Closed"** badge instead of the live/demo badge, so a closing
+  price is never presented as if it were live.
 - The frontend stops polling every 60 seconds and switches to a slow
   15-minute check (just enough to notice the market reopening) — see
   `REFRESH_INTERVAL_MS` / `CLOSED_REFRESH_INTERVAL_MS` in `client/src/App.tsx`.
 - The backend's quote cache TTL extends from 60 seconds to 30 minutes while
-  closed, and the alert-checking scheduler (`alertScheduler.js`) skips its
-  run entirely (`skipped: "market_closed"`) rather than re-checking prices
-  that can't have changed.
+  that code's market is closed.
+- The alert-checking scheduler (`alertScheduler.js`) evaluates each active
+  alert's code against its own market's hours and skips only that code for
+  the round — a closed TASI session doesn't pause checks on open US alerts,
+  and vice versa.
 
-Saudi/Islamic holidays are **not** hardcoded (dates shift yearly on the
-Hijri calendar and can't be reliably verified from this environment) — set
-them manually instead:
+The Admin page's status card shows both sessions separately ("Market
+(TASI)" / "Market (US)").
+
+Saudi/Islamic and US holidays are **not** hardcoded (Hijri-calendar dates
+shift yearly, and I couldn't verify either calendar live from this
+environment) — set them manually instead:
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `MARKET_HOLIDAYS` | optional | Comma-separated `YYYY-MM-DD` dates (Riyadh calendar day) treated as closed even during normal trading hours/weekdays, e.g. `2026-03-20,2026-03-21,2026-03-22`. |
+| `MARKET_HOLIDAYS` | optional | TASI holidays. Comma-separated `YYYY-MM-DD` dates (Riyadh calendar day) treated as closed even during normal trading hours/weekdays, e.g. `2026-03-20,2026-03-21,2026-03-22`. |
+| `US_MARKET_HOLIDAYS` | optional | NYSE/NASDAQ holidays. Same format, `America/New_York` calendar day, e.g. `2026-01-01,2026-12-25`. |
 
 ## Chart: viewing more history
 

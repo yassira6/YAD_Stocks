@@ -6,6 +6,7 @@ import { SearchBar } from "./SearchBar";
 import { LoginPage } from "./LoginPage";
 import { fetchQuote, createAlert, fetchMyAlerts, cancelAlert as cancelAlertApi } from "../lib/api";
 import { formatDateTime, formatPrice } from "../lib/format";
+import { defaultCurrency, detectMarket } from "../lib/markets";
 import type { AlertDirection, PriceAlert, QuoteResponse } from "../types";
 
 const STATUS_STYLES: Record<PriceAlert["status"], string> = {
@@ -250,7 +251,9 @@ export function AlertsPage() {
                     </p>
                     <p className="mt-0.5 text-xs text-ink-300">
                       {a.direction === "buy" ? t.alertsBuyOption : t.alertsSellOption}{" "}
-                      <span className="font-semibold text-ink-100">{formatPrice(a.targetPrice, lang, "SAR")}</span>
+                      <span className="font-semibold text-ink-100">
+                        {formatPrice(a.targetPrice, lang, defaultCurrency(detectMarket(a.code)))}
+                      </span>
                     </p>
                     <p className="mt-0.5 text-[11px] text-ink-300/80">
                       {a.status === "triggered" && a.triggeredAt

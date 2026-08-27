@@ -3,6 +3,8 @@
 // It must never be mistaken for real data — every response using it is tagged
 // dataSource:"demo" so the UI can render an unmissable banner.
 
+import { normalizeCode } from "./markets.js";
+
 function hashSeed(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -23,10 +25,12 @@ function mulberry32(seed) {
   };
 }
 
-export function generateDemoHistory(code, { days = 126 } = {}) {
+export function generateDemoHistory(code, { days = 126, market = "TASI" } = {}) {
   const seed = hashSeed(String(code));
   const rand = mulberry32(seed);
-  const basePrice = 8 + (seed % 180); // plausible SAR range
+  // Plausible per-share ranges differ a lot between markets (TASI names
+  // commonly trade in the tens of SAR; US large-caps span a much wider band).
+  const basePrice = market === "US" ? 15 + (seed % 480) : 8 + (seed % 180);
   let price = basePrice;
   let trendBias = (rand() - 0.5) * 0.15; // slow drift, differs per company
 
@@ -68,12 +72,14 @@ export function generateDemoHistory(code, { days = 126 } = {}) {
 
   const last = series.at(-1);
   const prev = series.at(-2);
+  const normalizedCode = normalizeCode(code);
 
   return {
-    symbol: `${code}.SR`,
-    code: String(code).trim().toUpperCase(),
-    currency: "SAR",
-    exchangeName: "Saudi Exchange (Demo)",
+    symbol: market === "US" ? normalizedCode : `${normalizedCode}.SR`,
+    code: normalizedCode,
+    market,
+    currency: market === "US" ? "USD" : "SAR",
+    exchangeName: market === "US" ? "NASDAQ/NYSE (Demo)" : "Saudi Exchange (Demo)",
     regularMarketPrice: last.close,
     previousClose: prev.close,
     regularMarketTime: Date.now(),

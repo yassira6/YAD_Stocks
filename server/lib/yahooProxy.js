@@ -1,10 +1,15 @@
+import { detectMarket, defaultCurrency, defaultExchangeName, normalizeCode } from "./markets.js";
+
 const CHART_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 const CHART_BASE_FALLBACK = "https://query2.finance.yahoo.com/v8/finance/chart";
 
-// Saudi Exchange (Tadawul) tickers on Yahoo Finance use the ".SR" suffix, e.g. 2222.SR for Aramco.
+// Saudi Exchange (Tadawul) tickers on Yahoo Finance use the ".SR" suffix, e.g.
+// 2222.SR for Aramco. US tickers (NASDAQ/NYSE/etc.) are used as-is — Yahoo
+// doesn't suffix them.
 export function toYahooSymbol(code) {
-  const trimmed = String(code).trim().toUpperCase();
-  return trimmed.endsWith(".SR") ? trimmed : `${trimmed}.SR`;
+  const trimmed = normalizeCode(code);
+  if (trimmed.endsWith(".SR")) return trimmed;
+  return detectMarket(trimmed) === "US" ? trimmed : `${trimmed}.SR`;
 }
 
 async function fetchChartFrom(base, symbol, range, interval) {
@@ -38,6 +43,7 @@ async function fetchChartFrom(base, symbol, range, interval) {
  */
 export async function fetchHistory(code, { range = "6mo", interval = "1d" } = {}) {
   const symbol = toYahooSymbol(code);
+  const market = detectMarket(code);
   let result;
   try {
     result = await fetchChartFrom(CHART_BASE, symbol, range, interval);
@@ -63,9 +69,10 @@ export async function fetchHistory(code, { range = "6mo", interval = "1d" } = {}
 
   return {
     symbol,
-    code: String(code).trim().toUpperCase(),
-    currency: meta.currency || "SAR",
-    exchangeName: meta.exchangeName || "Saudi Exchange",
+    code: normalizeCode(code),
+    market,
+    currency: meta.currency || defaultCurrency(market),
+    exchangeName: meta.exchangeName || defaultExchangeName(market),
     displayName: meta.longName || meta.shortName || null,
     regularMarketPrice: meta.regularMarketPrice ?? series.at(-1)?.close ?? null,
     previousClose: meta.chartPreviousClose ?? meta.previousClose ?? series.at(-2)?.close ?? null,

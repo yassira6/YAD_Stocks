@@ -3,6 +3,7 @@ import { useLanguage } from "../i18n/LanguageContext";
 import { useAuth } from "../lib/AuthContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { formatDateTime, formatPrice } from "../lib/format";
+import { defaultCurrency, detectMarket } from "../lib/markets";
 import { sendUserEmail } from "../lib/api";
 import type { AdminStatus, PriceAlert, User } from "../types";
 
@@ -185,8 +186,10 @@ export function AdminPage() {
             <span className="rounded-full bg-ink-700 px-2.5 py-1 text-xs font-semibold text-ink-200">
               {status.priceSource}
             </span>
-            <span className="ms-3 text-xs text-ink-300">{t.adminMarketStatus}:</span>
-            <StatusPill ok={status.marketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
+            <span className="ms-3 text-xs text-ink-300">{t.adminMarketStatus} (TASI):</span>
+            <StatusPill ok={status.tasiMarketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
+            <span className="ms-3 text-xs text-ink-300">{t.adminMarketStatus} (US):</span>
+            <StatusPill ok={status.usMarketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
           </div>
         </div>
       )}
@@ -249,7 +252,7 @@ export function AdminPage() {
                   <td className="py-2.5 pe-3 font-mono text-xs text-brand-300">{a.code}</td>
                   <td className="py-2.5 pe-3 text-ink-300">{a.userEmail || a.email}</td>
                   <td className="py-2.5 pe-3 text-ink-100">
-                    {a.direction} @ {formatPrice(a.targetPrice, lang, "SAR")}
+                    {a.direction} @ {formatPrice(a.targetPrice, lang, defaultCurrency(detectMarket(a.code)))}
                   </td>
                   <td className="py-2.5 pe-3 text-ink-300">{a.status}</td>
                   <td className="py-2.5 pe-3">

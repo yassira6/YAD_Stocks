@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { detectMarket } from "./markets.js";
 
 const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, MAIL_FROM, APP_URL } = process.env;
 
@@ -41,14 +42,17 @@ export async function sendMail({ to, subject, text }) {
 function alertEmailContent(alert, company, currentPrice) {
   const name = company ? (alert.lang === "ar" ? company.nameAr || company.nameEn : company.nameEn) : alert.code;
   const link = APP_URL ? `${APP_URL.replace(/\/$/, "")}/?code=${alert.code}` : null;
+  const market = detectMarket(alert.code);
+  const currencyAr = market === "US" ? "$" : "ر.س";
+  const currencyEn = market === "US" ? "USD" : "SAR";
 
   if (alert.lang === "ar") {
     const directionAr = alert.direction === "buy" ? "الشراء" : "البيع";
     const subject = `MyShare — ${name} (${alert.code}) وصل إلى سعر ${directionAr} المستهدف`;
     const text = [
       `تنبيهك لـ ${name} (${alert.code}) تحقق.`,
-      `هدفك: ${directionAr} عند ${alert.targetPrice.toFixed(2)} ر.س`,
-      `السعر الحالي: ${currentPrice.toFixed(2)} ر.س`,
+      `هدفك: ${directionAr} عند ${alert.targetPrice.toFixed(2)} ${currencyAr}`,
+      `السعر الحالي: ${currentPrice.toFixed(2)} ${currencyAr}`,
       link ? `افتح السهم في MyShare: ${link}` : null,
       "",
       "هذا تنبيه آلي مبني على تحليل فني تلقائي وليس نصيحة استثمارية. يُرجى التحقق من السعر الفعلي قبل اتخاذ أي قرار.",
@@ -61,8 +65,8 @@ function alertEmailContent(alert, company, currentPrice) {
   const subject = `MyShare — ${name} (${alert.code}) hit your ${alert.direction} target`;
   const text = [
     `Your alert for ${name} (${alert.code}) has triggered.`,
-    `Your target: ${alert.direction} at SAR ${alert.targetPrice.toFixed(2)}`,
-    `Current price: SAR ${currentPrice.toFixed(2)}`,
+    `Your target: ${alert.direction} at ${currencyEn} ${alert.targetPrice.toFixed(2)}`,
+    `Current price: ${currencyEn} ${currentPrice.toFixed(2)}`,
     link ? `Open it in MyShare: ${link}` : null,
     "",
     "This is an automated alert based on rules-based technical analysis, not investment advice. Please verify the live price before acting.",

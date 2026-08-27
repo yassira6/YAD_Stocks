@@ -34,6 +34,7 @@ db.exec(`
     name_ar TEXT,
     sector_en TEXT,
     sector_ar TEXT,
+    market TEXT NOT NULL DEFAULT 'TASI',
     source TEXT NOT NULL DEFAULT 'seed',
     last_price REAL,
     last_checked_at INTEGER,
@@ -106,5 +107,6 @@ ensureColumn("alerts", "user_id", "user_id TEXT");
 ensureColumn("alerts", "email_sent", "email_sent INTEGER");
 ensureColumn("alerts", "email_error", "email_error TEXT");
 db.exec(`CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)`);
+ensureColumn("companies", "market", "market TEXT NOT NULL DEFAULT 'TASI'");
 
 export { DB_PATH };

@@ -1,7 +1,7 @@
 {
-  "name": "MyShare — TASI",
+  "name": "MyShare — TASI & US Stocks",
   "short_name": "MyShare",
-  "description": "Search Tadawul (TASI) companies, track prices and get technical + money-flow analysis.",
+  "description": "Search Tadawul (TASI) and US (NASDAQ/S&P 500) companies, track prices and get technical + money-flow analysis.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b1220",

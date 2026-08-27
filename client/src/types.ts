@@ -7,6 +7,7 @@ export interface Company {
   nameAr: string | null;
   sectorEn: string | null;
   sectorAr: string | null;
+  market: "TASI" | "US";
 }
 
 export interface Bar {
@@ -74,6 +75,7 @@ export interface Analysis {
 export interface QuoteResponse {
   symbol: string;
   code: string;
+  market: "TASI" | "US";
   currency: string;
   exchangeName: string;
   regularMarketPrice: number;
@@ -128,4 +130,6 @@ export interface AdminStatus {
   totalCompanies: number;
   priceSource: string;
   marketOpen: boolean;
+  tasiMarketOpen: boolean;
+  usMarketOpen: boolean;
 }

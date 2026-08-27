@@ -19,7 +19,8 @@ export interface SearchResult {
   code: string;
 }
 
-const CODE_RE = /^\d{2,5}$/;
+const TASI_CODE_RE = /^\d{2,5}$/;
+const US_CODE_RE = /^[A-Za-z]{1,5}(\.[A-Za-z]{1,2})?$/;
 
 export function searchCompanies(query: string, companies: Company[], limit = 8): SearchResult[] {
   const raw = query.trim();
@@ -54,11 +55,26 @@ export function searchCompanies(query: string, companies: Company[], limit = 8):
   });
 
   const trimmed = results.slice(0, limit);
+  const upper = raw.toUpperCase();
 
   // If the query looks like a raw TASI code not present in our directory,
   // still offer a direct lookup so the app stays useful beyond the curated list.
-  if (CODE_RE.test(raw) && !trimmed.some((r) => r.company?.code === raw)) {
+  // Numeric codes are unambiguous, so this is offered even alongside other
+  // matches (e.g. "22" prefix-matches "2222" but "22" itself might also be
+  // a different real code not in our directory).
+  if (TASI_CODE_RE.test(raw) && !trimmed.some((r) => r.company?.code === raw)) {
     trimmed.push({ company: null, isDirect: true, code: raw });
+  } else if (
+    // A bare 1-5 letter query is ambiguous — it could be a ticker (AAPL) or
+    // the start of a company name (e.g. "apple") that already matched above.
+    // Only offer the literal-ticker guess when nothing else matched, so
+    // typing "apple" shows the real "Apple Inc. (AAPL)" result instead of
+    // also suggesting a bogus direct lookup for "APPLE".
+    trimmed.length === 0 &&
+    US_CODE_RE.test(raw) &&
+    !trimmed.some((r) => r.company?.code === upper)
+  ) {
+    trimmed.push({ company: null, isDirect: true, code: upper });
   }
 
   return trimmed.slice(0, limit);

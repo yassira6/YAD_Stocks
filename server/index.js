@@ -15,6 +15,7 @@ import { authRouter } from "./lib/authRoutes.js";
 import { adminRouter } from "./lib/adminRoutes.js";
 import { requireAuth, optionalAuth } from "./lib/auth.js";
 import { getMarketStatus } from "./lib/marketHours.js";
+import { detectMarket, isValidCode } from "./lib/markets.js";
 
 const app = express();
 const PORT = process.env.PORT || 5174;
@@ -68,8 +69,6 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 
-const CODE_RE = /^\d{3,5}$/;
-
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.get("/api/version", (_req, res) => res.json(VERSION_INFO));
@@ -80,8 +79,9 @@ app.get("/api/companies", (_req, res) => {
 
 app.get("/api/quote/:code", async (req, res) => {
   const { code } = req.params;
-  if (!CODE_RE.test(code)) {
-    return res.status(400).json({ error: "Invalid TASI code. Expected 3-5 digits." });
+  const market = detectMarket(code);
+  if (!isValidCode(code)) {
+    return res.status(400).json({ error: "Invalid code. Expected a TASI code (3-5 digits) or a US ticker (e.g. AAPL)." });
   }
 
   const cacheKey = `quote:${code}`;
@@ -104,17 +104,17 @@ app.get("/api/quote/:code", async (req, res) => {
   } catch (err) {
     liveError = err.message;
     console.error(`live quote fetch failed for ${code}, falling back to demo data:`, err.message);
-    history = generateDemoHistory(code, { days: 500 });
+    history = generateDemoHistory(code, { days: 500, market });
     dataSource = "demo";
   }
 
   const analysis = analyzeSeries(history.series);
-  const market = getMarketStatus();
-  const payload = { ...history, analysis, dataSource, liveError, marketOpen: market.open, marketCloseReason: market.reason };
+  const status = getMarketStatus(market);
+  const payload = { ...history, analysis, dataSource, liveError, marketOpen: status.open, marketCloseReason: status.reason };
   // While the market's closed, nothing here can change — cache much longer
   // so auto-refreshes (and other visitors looking at the same code) don't
   // re-hit the upstream provider for no reason.
-  cache.set(cacheKey, payload, market.open ? 60 : 1800);
+  cache.set(cacheKey, payload, status.open ? 60 : 1800);
   res.json(payload);
 });
 

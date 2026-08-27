@@ -2,6 +2,7 @@ import { fetchHistory } from "./priceProvider.js";
 import { getCompany } from "./companies.js";
 import { sendAlertEmail } from "./mailer.js";
 import { isMarketOpen } from "./marketHours.js";
+import { detectMarket } from "./markets.js";
 import {
   listActiveAlertCodes,
   listActiveAlertsForCode,
@@ -16,16 +17,22 @@ import {
  * real email off synthetic placeholder data would be actively misleading.
  * A code whose live fetch fails is just skipped for this round; its alerts
  * stay active and get picked up on a later successful check.
+ *
+ * TASI and US alerts keep different trading hours, so the "market closed"
+ * skip is evaluated per code rather than gating the whole run — e.g. TASI
+ * alerts can be checked while NASDAQ is still closed for the day, and vice versa.
  */
 export async function checkAlertsOnce() {
-  if (!isMarketOpen()) return { checkedCodes: 0, triggered: 0, skipped: "market_closed" };
-
   const codes = listActiveAlertCodes();
   if (codes.length === 0) return { checkedCodes: 0, triggered: 0 };
 
   let triggered = 0;
+  let checkedCodes = 0;
 
   for (const code of codes) {
+    if (!isMarketOpen(detectMarket(code))) continue;
+    checkedCodes += 1;
+
     let history;
     try {
       // Daily data is enough to know the latest close; we don't need the
@@ -67,7 +74,7 @@ export async function checkAlertsOnce() {
     }
   }
 
-  return { checkedCodes: codes.length, triggered };
+  return { checkedCodes, triggered };
 }
 
 export function startAlertScheduler(intervalMs) {

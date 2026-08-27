@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "./db.js";
+import { isValidCode, normalizeCode } from "./markets.js";
 
-const CODE_RE = /^\d{3,5}$/;
 const MAX_ACTIVE_ALERTS_PER_USER = 20;
 
 const insertStmt = db.prepare(`
@@ -50,10 +50,10 @@ export class ValidationError extends Error {}
 
 /** userId/email always come from the authenticated session — never client-supplied. */
 export function createAlert({ userId, email, code, direction, targetPrice, lang }) {
-  const cleanCode = String(code || "").trim();
+  const cleanCode = normalizeCode(code);
   const cleanLang = lang === "en" ? "en" : "ar";
 
-  if (!CODE_RE.test(cleanCode)) throw new ValidationError("Invalid TASI code.");
+  if (!isValidCode(cleanCode)) throw new ValidationError("Invalid company/ticker code.");
   if (direction !== "buy" && direction !== "sell") throw new ValidationError("direction must be 'buy' or 'sell'.");
   const price = Number(targetPrice);
   if (!Number.isFinite(price) || price <= 0) throw new ValidationError("targetPrice must be a positive number.");

@@ -20,7 +20,9 @@ adminRouter.get("/status", (_req, res) => {
     totalAlerts: listAllAlerts().length,
     totalCompanies: listCompanies().length,
     priceSource: getPriceSourceName(),
-    marketOpen: isMarketOpen(),
+    marketOpen: isMarketOpen("TASI"),
+    tasiMarketOpen: isMarketOpen("TASI"),
+    usMarketOpen: isMarketOpen("US"),
   });
 });
 
