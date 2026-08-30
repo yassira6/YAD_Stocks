@@ -9,6 +9,15 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#065f46" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- iOS ignores display:"standalone" in the manifest unless these are also
+         set — without them, "Add to Home Screen" just bookmarks the page in
+         Safari instead of launching standalone, and standalone mode is a hard
+         requirement for Web Push to work on iOS at all (see README "Strong
+         buy/sell signal subscriptions"). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MyShare" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="description" content="Search TASI (Tadawul) and US (NASDAQ/S&P 500) companies by code, ticker, or name, view live price charts, and get bilingual technical + money-flow buy/sell analysis." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

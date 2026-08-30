@@ -154,6 +154,8 @@ export const translations = {
     signalsPushToggleLabel: "Push notifications",
     signalsPushToggleHint: "Get a browser notification, even when MyShare isn't open.",
     signalsPushUnsupported: "Push notifications aren't supported in this browser.",
+    signalsPushIosHint:
+      "On iPhone/iPad: open this site in Safari, tap Share, then \"Add to Home Screen\" — push notifications only work once you open MyShare from that home screen icon (iOS 16.4+).",
     signalsPushNotConfigured: "Push notifications aren't set up on this deployment yet — email notifications still work.",
     signalsSaving: "Saving…",
     signalsSaved: "Preferences saved.",
@@ -330,6 +332,8 @@ export const translations = {
     signalsPushToggleLabel: "إشعارات الدفع (Push)",
     signalsPushToggleHint: "احصل على إشعار من المتصفح حتى عندما لا يكون MyShare مفتوحاً.",
     signalsPushUnsupported: "إشعارات الدفع غير مدعومة في هذا المتصفح.",
+    signalsPushIosHint:
+      "على آيفون/آيباد: افتح هذا الموقع في Safari، اضغط على زر المشاركة، ثم \"إضافة إلى الشاشة الرئيسية\" — إشعارات الدفع تعمل فقط عند فتح MyShare من أيقونة الشاشة الرئيسية (يتطلب iOS 16.4 أو أحدث).",
     signalsPushNotConfigured: "إشعارات الدفع غير مُفعّلة على هذا الموقع بعد — إشعارات البريد الإلكتروني تعمل رغم ذلك.",
     signalsSaving: "جارٍ الحفظ…",
     signalsSaved: "تم حفظ التفضيلات.",

@@ -253,6 +253,20 @@ feed — see the mechanics below.
   Without `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` set, the Push toggle on the
   Signals page is shown disabled with an explanation, and email notifications
   keep working normally — push is additive, not required.
+
+  **Android**: works out of the box in a normal browser tab — Chrome,
+  Edge, Firefox — no installation needed.
+
+  **iOS/iPadOS**: Apple only allows Web Push for a site that has been
+  explicitly **"Added to Home Screen"** as an installed web app (Safari
+  16.4+) — it does not work in a regular Safari tab, full stop, no matter
+  what the code does. `client/index.html` carries the `apple-mobile-web-app-*`
+  meta tags this requires (without them iOS treats "Add to Home Screen" as a
+  plain bookmark instead of launching standalone, which silently breaks push
+  too). `client/src/lib/push.ts`'s `getPushBlockedReason()` detects "iOS but
+  not installed" and the Signals page shows the "Share → Add to Home Screen"
+  instructions in place of the toggle in that case, rather than a confusing
+  silent failure.
 - **Admin visibility**: the Admin page's status card shows email/push
   subscriber counts and whether push is configured, and a new **Active
   strong signals** table lists every company currently flagged, with a

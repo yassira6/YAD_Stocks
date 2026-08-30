@@ -1,9 +1,37 @@
 // Thin wrapper around the browser's Push API for the "Signals" subscription
 // feature. Every function is defensive about missing browser support (older
 // Safari, some in-app browsers) since this isn't universally available.
+//
+// iOS/iPadOS is a special case: Apple only allows Web Push for a site the
+// user has explicitly "Added to Home Screen" as an installed web app
+// (Safari 16.4+) — it silently doesn't work in a normal Safari tab, with no
+// helpful error to catch. isIOS()/isStandalone() let the UI detect that case
+// up front and tell the user what to do, instead of the toggle just failing.
+
+export function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  // iPadOS 13+ reports as "MacIntel" but has touch support, unlike a real Mac.
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  // navigator.standalone is Safari-specific (iOS); display-mode covers everyone else.
+  return (window.navigator as { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+}
 
 export function isPushSupported(): boolean {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
+}
+
+/**
+ * Why push can't be turned on right now, if it can't — lets the UI show a
+ * specific, actionable message instead of a generic "not supported".
+ */
+export function getPushBlockedReason(): "unsupported" | "ios_not_installed" | null {
+  if (isIOS() && !isStandalone()) return "ios_not_installed";
+  if (!isPushSupported()) return "unsupported";
+  return null;
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

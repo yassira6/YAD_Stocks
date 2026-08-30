@@ -9,7 +9,7 @@ import {
   unregisterPushSubscription,
   updateSignalSubscription,
 } from "../lib/api";
-import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "../lib/push";
+import { getPushBlockedReason, subscribeToPush, unsubscribeFromPush } from "../lib/push";
 import type { SignalSubscription } from "../types";
 
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
@@ -119,7 +119,7 @@ export function SignalsPage() {
     );
   }
 
-  const pushSupported = isPushSupported();
+  const pushBlockedReason = getPushBlockedReason();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -147,10 +147,16 @@ export function SignalsPage() {
               <div>
                 <p className="text-sm font-semibold text-ink-100">{t.signalsPushToggleLabel}</p>
                 <p className="mt-0.5 text-xs text-ink-300">
-                  {!pushSupported ? t.signalsPushUnsupported : !sub.pushConfigured ? t.signalsPushNotConfigured : t.signalsPushToggleHint}
+                  {pushBlockedReason === "ios_not_installed"
+                    ? t.signalsPushIosHint
+                    : pushBlockedReason === "unsupported"
+                    ? t.signalsPushUnsupported
+                    : !sub.pushConfigured
+                    ? t.signalsPushNotConfigured
+                    : t.signalsPushToggleHint}
                 </p>
               </div>
-              <Toggle checked={sub.pushEnabled} onChange={onTogglePush} disabled={saving || !pushSupported || !sub.pushConfigured} />
+              <Toggle checked={sub.pushEnabled} onChange={onTogglePush} disabled={saving || !!pushBlockedReason || !sub.pushConfigured} />
             </div>
 
             {saving && <p className="text-xs text-ink-300">{t.signalsSaving}</p>}
