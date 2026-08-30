@@ -125,6 +125,7 @@ export interface AdminStatus {
   smtpConfigured: boolean;
   googleConfigured: boolean;
   appleConfigured: boolean;
+  pushConfigured: boolean;
   totalUsers: number;
   totalAlerts: number;
   totalCompanies: number;
@@ -132,4 +133,24 @@ export interface AdminStatus {
   marketOpen: boolean;
   tasiMarketOpen: boolean;
   usMarketOpen: boolean;
+  signalSubscribers: { email: number; push: number };
+}
+
+export interface SignalSubscription {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  lang: "en" | "ar";
+  hasPushRegistration: boolean;
+  pushConfigured: boolean;
+}
+
+export interface CompanySignal {
+  code: string;
+  nameEn: string | null;
+  nameAr: string | null;
+  lastVerdict: Verdict | null;
+  lastScore: number | null;
+  lastNotifiedVerdict: Verdict | null;
+  lastNotifiedAt: number | null;
+  updatedAt: number;
 }

@@ -50,6 +50,15 @@ export function Header({ view }: Props) {
             >
               {t.navAlerts}
             </button>
+            <button
+              type="button"
+              onClick={() => navigateTo("signals")}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                view === "signals" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
+              }`}
+            >
+              {t.navSignals}
+            </button>
             {user?.isAdmin && (
               <button
                 type="button"

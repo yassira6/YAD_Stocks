@@ -75,7 +75,15 @@ export async function fetchHistory(code, { range = "6mo", interval = "1d" } = {}
     exchangeName: meta.exchangeName || defaultExchangeName(market),
     displayName: meta.longName || meta.shortName || null,
     regularMarketPrice: meta.regularMarketPrice ?? series.at(-1)?.close ?? null,
-    previousClose: meta.chartPreviousClose ?? meta.previousClose ?? series.at(-2)?.close ?? null,
+    // meta.chartPreviousClose is a Yahoo quirk: it's the close AT THE START OF
+    // THE REQUESTED RANGE (e.g. ~2 years ago for range=2y), not "yesterday's
+    // close" — using it here would badly misrepresent the day's % change once
+    // the range grew past a day or two. series.at(-2) (the bar right before
+    // today's, from our own fetched daily data) is always correct regardless
+    // of range; meta.previousClose is the genuine quote-level field when
+    // Yahoo includes it. chartPreviousClose is kept only as a last-resort
+    // fallback for a stock with under 2 days of trading history.
+    previousClose: series.at(-2)?.close ?? meta.previousClose ?? meta.chartPreviousClose ?? null,
     regularMarketTime: meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now(),
     series,
   };

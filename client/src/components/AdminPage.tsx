@@ -4,8 +4,8 @@ import { useAuth } from "../lib/AuthContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { formatDateTime, formatPrice } from "../lib/format";
 import { defaultCurrency, detectMarket } from "../lib/markets";
-import { sendUserEmail } from "../lib/api";
-import type { AdminStatus, PriceAlert, User } from "../types";
+import { sendUserEmail, fetchActiveSignals, triggerSignalScan } from "../lib/api";
+import type { AdminStatus, CompanySignal, PriceAlert, User } from "../types";
 
 function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
   return (
@@ -112,9 +112,18 @@ export function AdminPage() {
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [signals, setSignals] = useState<CompanySignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState<User | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ scanned: number; newSignals: number } | null>(null);
+
+  function reloadSignals() {
+    fetchActiveSignals()
+      .then(setSignals)
+      .catch(() => {});
+  }
 
   useEffect(() => {
     if (authLoading || !user?.isAdmin) return;
@@ -123,16 +132,32 @@ export function AdminPage() {
       fetch("/api/admin/status").then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
       fetch("/api/admin/users").then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
       fetch("/api/admin/alerts").then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+      fetchActiveSignals(),
     ])
-      .then(([s, u, a]) => {
+      .then(([s, u, a, sig]) => {
         setStatus(s);
         setUsers(u);
         setAlerts(a);
+        setSignals(sig);
         setError(null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
   }, [authLoading, user]);
+
+  async function onScanNow() {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const result = await triggerSignalScan();
+      setScanResult(result);
+      reloadSignals();
+    } catch {
+      // best-effort — the periodic scan will still run on its own schedule
+    } finally {
+      setScanning(false);
+    }
+  }
 
   if (authLoading) return null;
 
@@ -180,6 +205,8 @@ export function AdminPage() {
             <StatusPill ok={status.googleConfigured} yes={t.configuredYes} no={t.configuredNo} />
             <span className="ms-3 text-xs text-ink-300">{t.adminAppleConfigured}:</span>
             <StatusPill ok={status.appleConfigured} yes={t.configuredYes} no={t.configuredNo} />
+            <span className="ms-3 text-xs text-ink-300">{t.adminPushConfigured}:</span>
+            <StatusPill ok={status.pushConfigured} yes={t.configuredYes} no={t.configuredNo} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="text-xs text-ink-300">{t.adminPriceSource}:</span>
@@ -190,6 +217,15 @@ export function AdminPage() {
             <StatusPill ok={status.tasiMarketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
             <span className="ms-3 text-xs text-ink-300">{t.adminMarketStatus} (US):</span>
             <StatusPill ok={status.usMarketOpen} yes={t.marketOpenLabel} no={t.marketClosedLabel} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-xs text-ink-300">{t.adminSignalSubscribersTitle}:</span>
+            <span className="rounded-full bg-ink-700 px-2.5 py-1 text-xs font-semibold text-ink-200">
+              {t.adminSignalEmailSubscribers} {status.signalSubscribers.email}
+            </span>
+            <span className="rounded-full bg-ink-700 px-2.5 py-1 text-xs font-semibold text-ink-200">
+              {t.adminSignalPushSubscribers} {status.signalSubscribers.push}
+            </span>
           </div>
         </div>
       )}
@@ -272,6 +308,58 @@ export function AdminPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-ink-100">{t.adminActiveSignalsTitle}</h3>
+          <button
+            type="button"
+            onClick={onScanNow}
+            disabled={scanning}
+            className="cursor-pointer rounded-full border border-ink-600 px-3 py-1.5 text-xs font-medium text-ink-200 transition hover:border-brand-500 hover:text-brand-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {scanning ? t.adminScanning : t.adminScanNow}
+          </button>
+        </div>
+
+        {scanResult && (
+          <p className="mt-2 text-xs text-ink-300">
+            {t.adminScanScannedLabel}: {scanResult.scanned} · {t.adminScanNewSignalsLabel}: {scanResult.newSignals}
+          </p>
+        )}
+
+        {signals.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-300">{t.adminActiveSignalsEmpty}</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[480px] text-start text-sm">
+              <tbody className="divide-y divide-ink-800">
+                {signals.map((s) => (
+                  <tr key={s.code}>
+                    <td className="py-2.5 pe-3 font-mono text-xs text-brand-300">{s.code}</td>
+                    <td className="py-2.5 pe-3 text-ink-100">
+                      {lang === "ar" ? s.nameAr || s.nameEn || s.code : s.nameEn || s.code}
+                    </td>
+                    <td className="py-2.5 pe-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          s.lastVerdict === "strong_buy" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"
+                        }`}
+                      >
+                        {s.lastVerdict === "strong_buy" ? t.signalVerdictBuy : t.signalVerdictSell}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pe-3 text-ink-300">{s.lastScore}</td>
+                    <td className="py-2.5 text-xs text-ink-300/80">
+                      {s.lastNotifiedAt ? formatDateTime(s.lastNotifiedAt, lang) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

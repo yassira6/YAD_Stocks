@@ -7,6 +7,7 @@ import { AnalysisPanel } from "./components/AnalysisPanel";
 import { DemoBanner } from "./components/DemoBanner";
 import { Footer } from "./components/Footer";
 import { AlertsPage } from "./components/AlertsPage";
+import { SignalsPage } from "./components/SignalsPage";
 import { LoginPage } from "./components/LoginPage";
 import { AdminPage } from "./components/AdminPage";
 import { useLanguage } from "./i18n/LanguageContext";
@@ -119,6 +120,8 @@ export default function App() {
           <LoginPage />
         ) : view === "alerts" ? (
           <AlertsPage />
+        ) : view === "signals" ? (
+          <SignalsPage />
         ) : view === "admin" ? (
           <AdminPage />
         ) : (

@@ -1,6 +1,6 @@
-export type View = "stock" | "alerts" | "login" | "admin";
+export type View = "stock" | "alerts" | "signals" | "login" | "admin";
 
-const VALID_VIEWS: View[] = ["stock", "alerts", "login", "admin"];
+const VALID_VIEWS: View[] = ["stock", "alerts", "signals", "login", "admin"];
 
 /** Parses "#/login?error=google_failed" into { view: "login", params }. */
 export function parseHash(): { view: View; params: URLSearchParams } {

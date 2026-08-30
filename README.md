@@ -217,6 +217,48 @@ of what was sent to whom. Without SMTP configured, the send fails with
 `smtp_not_configured` and that failure is still logged, same as alert
 emails.
 
+## Strong buy/sell signal subscriptions (email + push)
+
+A separate opt-in from the per-stock price alerts above: from the **Signals**
+nav tab, a signed-in user can subscribe to be notified — by email and/or
+browser push — the moment **any** company in the tracked directory (TASI or
+US) newly turns Strong Buy or Strong Sell, without having to watch it
+themselves. "Real-time" here means periodic scanning, not a literal live
+feed — see the mechanics below.
+
+- **How a signal fires**: `server/lib/signalScanner.js` runs every
+  `SIGNAL_SCAN_INTERVAL_MS` (default 30 min), walks every company in the
+  directory whose market is currently open, fetches its live price/history
+  (same live-only rule as price alerts — never the demo fallback), and runs
+  it through the same `analyzeSeries()` used for the stock detail page.
+  `server/lib/companySignals.js` tracks each company's last verdict so a
+  signal only notifies once when it *newly* becomes strong — not on every
+  scan while it stays strong, but a fresh notification if it later drops out
+  and comes back, or flips directly from Strong Buy to Strong Sell.
+- **Email** goes through the same `sendMail()`/SMTP setup as alert and admin
+  emails — nothing extra to configure beyond what "Price alerts & email"
+  above already covers.
+- **Push** uses the [Web Push](https://web.dev/push-notifications-overview/)
+  standard (`web-push` npm package, VAPID auth, `client/public/sw.js` as the
+  service worker) — it works even when the MyShare tab isn't open, as long
+  as the browser/OS notification permission is granted. Requires a VAPID key
+  pair:
+
+  | Variable | Required | Notes |
+  | --- | --- | --- |
+  | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | for push | An ECDSA key pair identifying this server to push services (FCM, Mozilla's push service, etc.) — not a login credential for anything, just proves notifications came from you. Generate a fresh pair with `node -e "console.log(require('web-push').generateVAPIDKeys())"` from `server/`, or use `npx web-push generate-vapid-keys`. Treat the private key like any other secret (Railway Variables, never committed). |
+  | `VAPID_SUBJECT` | optional | A `mailto:` or `https:` URL identifying the sender, e.g. `mailto:yassira6@gmail.com`. Defaults to a placeholder if unset — push services may rate-limit or reject sends from an unidentified sender, so set this in production. |
+  | `SIGNAL_SCAN_INTERVAL_MS` | optional | Default `1800000` (30 min). This walks the **entire** company directory (TASI + US — a few hundred names) with one live fetch each, every interval — meaningfully more upstream load than the price-alert scheduler's per-alert checks. Widen this (or the app will need a scoped-scan option added later) if it becomes a rate-limiting concern. |
+
+  Without `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` set, the Push toggle on the
+  Signals page is shown disabled with an explanation, and email notifications
+  keep working normally — push is additive, not required.
+- **Admin visibility**: the Admin page's status card shows email/push
+  subscriber counts and whether push is configured, and a new **Active
+  strong signals** table lists every company currently flagged, with a
+  **Scan now** button to trigger a scan on demand (useful right after
+  setting up SMTP/VAPID, instead of waiting for the next interval).
+
 ## Price source configuration
 
 Prices are fetched through a small provider registry

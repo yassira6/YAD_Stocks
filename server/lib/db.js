@@ -86,10 +86,46 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  -- One row per user: whether they want email/push notifications for
+  -- market-wide strong-buy/strong-sell signals (a separate opt-in from the
+  -- per-stock price alerts in the 'alerts' table above).
+  CREATE TABLE IF NOT EXISTS signal_subscriptions (
+    user_id TEXT PRIMARY KEY,
+    email_enabled INTEGER NOT NULL DEFAULT 0,
+    push_enabled INTEGER NOT NULL DEFAULT 0,
+    lang TEXT NOT NULL DEFAULT 'ar',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  -- Web Push subscription objects registered by the browser. A user can have
+  -- more than one (multiple devices/browsers), so this is keyed by endpoint,
+  -- not user_id.
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  -- Last known verdict per company, so the scanner can tell a *new* strong
+  -- signal (worth notifying about) from one that's already been announced.
+  CREATE TABLE IF NOT EXISTS company_signals (
+    code TEXT PRIMARY KEY,
+    last_verdict TEXT,
+    last_score REAL,
+    last_notified_verdict TEXT,
+    last_notified_at INTEGER,
+    updated_at INTEGER NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_alerts_email ON alerts(email);
   CREATE INDEX IF NOT EXISTS idx_alerts_status_code ON alerts(status, code);
   CREATE INDEX IF NOT EXISTS idx_companies_updated ON companies(updated_at);
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
 `);
 
 // --- Lightweight migrations -------------------------------------------------

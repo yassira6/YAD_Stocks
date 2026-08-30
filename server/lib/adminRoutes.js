@@ -1,12 +1,16 @@
 import express from "express";
 import { requireAdmin, listAllUsers, getUserById } from "./auth.js";
 import { listAllAlerts } from "./alerts.js";
-import { listCompanies } from "./companies.js";
+import { listCompanies, getCompany } from "./companies.js";
 import { isEmailConfigured, sendMail } from "./mailer.js";
 import { isGoogleConfigured, isAppleConfigured } from "./oidcProviders.js";
 import { recordAdminEmail, listAdminEmailsForUser } from "./adminEmails.js";
 import { getPriceSourceName } from "./priceProvider.js";
 import { isMarketOpen } from "./marketHours.js";
+import { isPushConfigured } from "./pushNotifications.js";
+import { countSignalSubscribers } from "./signalSubscriptions.js";
+import { listActiveSignals } from "./companySignals.js";
+import { scanForSignalsOnce } from "./signalScanner.js";
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAdmin);
@@ -16,6 +20,7 @@ adminRouter.get("/status", (_req, res) => {
     smtpConfigured: isEmailConfigured(),
     googleConfigured: isGoogleConfigured(),
     appleConfigured: isAppleConfigured(),
+    pushConfigured: isPushConfigured(),
     totalUsers: listAllUsers().length,
     totalAlerts: listAllAlerts().length,
     totalCompanies: listCompanies().length,
@@ -23,6 +28,7 @@ adminRouter.get("/status", (_req, res) => {
     marketOpen: isMarketOpen("TASI"),
     tasiMarketOpen: isMarketOpen("TASI"),
     usMarketOpen: isMarketOpen("US"),
+    signalSubscribers: countSignalSubscribers(),
   });
 });
 
@@ -67,4 +73,30 @@ adminRouter.post("/users/:id/email", async (req, res) => {
 
 adminRouter.get("/users/:id/emails", (req, res) => {
   res.json(listAdminEmailsForUser(req.params.id));
+});
+
+// The analysis currently being fanned out to signal subscribers — every
+// company the scanner most recently saw as strong_buy/strong_sell.
+adminRouter.get("/signals", (_req, res) => {
+  const signals = listActiveSignals().map((s) => {
+    const company = getCompany(s.code);
+    return {
+      ...s,
+      nameEn: company?.nameEn ?? null,
+      nameAr: company?.nameAr ?? null,
+    };
+  });
+  res.json(signals);
+});
+
+// Lets the admin trigger a scan on demand (e.g. right after setting SMTP/VAPID
+// env vars) instead of waiting for the next SIGNAL_SCAN_INTERVAL_MS tick.
+adminRouter.post("/signals/scan", async (_req, res) => {
+  try {
+    const result = await scanForSignalsOnce();
+    res.json(result);
+  } catch (err) {
+    console.error("[admin] manual signal scan failed:", err);
+    res.status(500).json({ error: "Scan failed." });
+  }
 });

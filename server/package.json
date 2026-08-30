@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "node-cache": "^5.1.2",
     "nodemailer": "^9.0.6",
-    "openid-client": "^6.8.7"
+    "openid-client": "^6.8.7",
+    "web-push": "^3.6.7"
   }
 }

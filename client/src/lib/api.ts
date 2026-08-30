@@ -1,4 +1,4 @@
-import type { AlertDirection, PriceAlert, QuoteResponse } from "../types";
+import type { AlertDirection, CompanySignal, PriceAlert, QuoteResponse, SignalSubscription } from "../types";
 
 async function unwrap<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -48,4 +48,61 @@ export async function sendUserEmail(userId: string, input: { subject: string; bo
       body: JSON.stringify(input),
     })
   );
+}
+
+// --- Strong-buy/strong-sell signal subscriptions -----------------------------
+
+export async function fetchVapidPublicKey(): Promise<{ publicKey: string | null; configured: boolean }> {
+  return unwrap(await fetch("/api/push/vapid-public-key"));
+}
+
+export async function fetchSignalSubscription(): Promise<SignalSubscription> {
+  return unwrap(await fetch("/api/signals/subscription", { credentials: "same-origin" }));
+}
+
+export async function updateSignalSubscription(input: {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  lang: "en" | "ar";
+}): Promise<SignalSubscription> {
+  return unwrap(
+    await fetch("/api/signals/subscription", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    })
+  );
+}
+
+export async function registerPushSubscription(subscription: PushSubscriptionJSON): Promise<void> {
+  await unwrap(
+    await fetch("/api/signals/push-subscribe", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(subscription),
+    })
+  );
+}
+
+export async function unregisterPushSubscription(endpoint: string): Promise<void> {
+  await unwrap(
+    await fetch("/api/signals/push-unsubscribe", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint }),
+    })
+  );
+}
+
+// --- Admin: signals -----------------------------------------------------------
+
+export async function fetchActiveSignals(): Promise<CompanySignal[]> {
+  return unwrap(await fetch("/api/admin/signals", { credentials: "same-origin" }));
+}
+
+export async function triggerSignalScan(): Promise<{ scanned: number; newSignals: number }> {
+  return unwrap(await fetch("/api/admin/signals/scan", { method: "POST", credentials: "same-origin" }));
 }

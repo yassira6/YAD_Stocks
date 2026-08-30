@@ -16,10 +16,23 @@ import { adminRouter } from "./lib/adminRoutes.js";
 import { requireAuth, optionalAuth } from "./lib/auth.js";
 import { getMarketStatus } from "./lib/marketHours.js";
 import { detectMarket, isValidCode } from "./lib/markets.js";
+import { startSignalScanner } from "./lib/signalScanner.js";
+import { getVapidPublicKey, isPushConfigured } from "./lib/pushNotifications.js";
+import {
+  getSignalSubscription,
+  setSignalSubscription,
+  addPushSubscription,
+  removePushSubscription,
+  hasPushRegistration,
+} from "./lib/signalSubscriptions.js";
 
 const app = express();
 const PORT = process.env.PORT || 5174;
 const ALERT_CHECK_INTERVAL_MS = Number(process.env.ALERT_CHECK_INTERVAL_MS) || 5 * 60_000;
+// Scanning the whole company directory (potentially a few hundred names, one
+// live fetch each) is much heavier than a single alert-price check, so this
+// defaults to a slower cadence than ALERT_CHECK_INTERVAL_MS.
+const SIGNAL_SCAN_INTERVAL_MS = Number(process.env.SIGNAL_SCAN_INTERVAL_MS) || 30 * 60_000;
 
 // Needed so req.protocol reflects "https" (not "http") behind Railway's
 // reverse proxy — matters for building correct OAuth redirect_uri values
@@ -176,6 +189,54 @@ app.delete("/api/alerts/:id", requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// --- Market-wide strong-buy/strong-sell signal subscriptions ----------------
+// A separate opt-in from per-stock price alerts above: this notifies a user
+// whenever ANY tracked company newly turns strong_buy/strong_sell, via email
+// and/or browser push. See lib/signalScanner.js for how "new" is decided.
+
+// Public — the frontend needs this to call pushManager.subscribe() before
+// the user is necessarily signed in to anything push-specific.
+app.get("/api/push/vapid-public-key", (_req, res) => {
+  res.json({ publicKey: getVapidPublicKey(), configured: isPushConfigured() });
+});
+
+function signalSubscriptionPayload(userId) {
+  return {
+    ...getSignalSubscription(userId),
+    hasPushRegistration: hasPushRegistration(userId),
+    pushConfigured: isPushConfigured(),
+  };
+}
+
+app.get("/api/signals/subscription", requireAuth, (req, res) => {
+  res.json(signalSubscriptionPayload(req.user.id));
+});
+
+app.put("/api/signals/subscription", requireAuth, (req, res) => {
+  setSignalSubscription(req.user.id, {
+    emailEnabled: !!req.body?.emailEnabled,
+    pushEnabled: !!req.body?.pushEnabled,
+    lang: req.body?.lang,
+  });
+  res.json(signalSubscriptionPayload(req.user.id));
+});
+
+// Called by the browser right after pushManager.subscribe() succeeds, with
+// the resulting PushSubscription object (endpoint + encryption keys).
+app.post("/api/signals/push-subscribe", requireAuth, (req, res) => {
+  const { endpoint, keys } = req.body || {};
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    return res.status(400).json({ error: "Invalid push subscription object." });
+  }
+  addPushSubscription(req.user.id, { endpoint, p256dh: keys.p256dh, auth: keys.auth });
+  res.status(201).json({ ok: true });
+});
+
+app.post("/api/signals/push-unsubscribe", requireAuth, (req, res) => {
+  if (req.body?.endpoint) removePushSubscription(req.body.endpoint);
+  res.json({ ok: true });
+});
+
 if (SERVES_CLIENT) {
   app.use(express.static(CLIENT_DIST));
   // SPA fallback for any non-API GET (the app is single-page today, and this
@@ -188,6 +249,7 @@ if (SERVES_CLIENT) {
 }
 
 startAlertScheduler(ALERT_CHECK_INTERVAL_MS);
+startSignalScanner(SIGNAL_SCAN_INTERVAL_MS);
 
 app.listen(PORT, () => {
   console.log(`MyShare listening on http://localhost:${PORT}${SERVES_CLIENT ? " (serving API + client)" : " (API only)"}`);
