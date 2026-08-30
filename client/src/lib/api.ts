@@ -20,6 +20,7 @@ export async function createAlert(input: {
   direction: AlertDirection;
   targetPrice: number;
   lang: "en" | "ar";
+  pushEnabled?: boolean;
 }): Promise<PriceAlert> {
   return unwrap(
     await fetch("/api/alerts", {
@@ -42,6 +43,17 @@ export async function cancelAlert(id: string): Promise<void> {
 export async function sendUserEmail(userId: string, input: { subject: string; body: string }): Promise<{ sent: boolean }> {
   return unwrap(
     await fetch(`/api/admin/users/${encodeURIComponent(userId)}/email`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    })
+  );
+}
+
+export async function sendUserPush(userId: string, input: { title: string; body: string }): Promise<{ sent: boolean }> {
+  return unwrap(
+    await fetch(`/api/admin/users/${encodeURIComponent(userId)}/push`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },

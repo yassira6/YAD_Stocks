@@ -37,6 +37,7 @@ const insertPushStmt = db.prepare(`
 const deletePushByEndpointStmt = db.prepare(`DELETE FROM push_subscriptions WHERE endpoint = ?`);
 const deletePushByUserStmt = db.prepare(`DELETE FROM push_subscriptions WHERE user_id = ?`);
 const countPushForUserStmt = db.prepare(`SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ?`);
+const listPushForUserStmt = db.prepare(`SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?`);
 
 export function addPushSubscription(userId, { endpoint, p256dh, auth }) {
   insertPushStmt.run(randomUUID(), userId, endpoint, p256dh, auth, Date.now());
@@ -52,6 +53,16 @@ export function removeAllPushSubscriptionsForUser(userId) {
 
 export function hasPushRegistration(userId) {
   return countPushForUserStmt.get(userId).n > 0;
+}
+
+/**
+ * Every device/browser a user has registered for push, regardless of which
+ * feature (Signals, per-alert push, admin push) triggers the send — the
+ * registration itself is shared, since a user only grants notification
+ * permission once.
+ */
+export function listPushSubscriptionsForUser(userId) {
+  return listPushForUserStmt.all(userId);
 }
 
 // --- Notification fan-out ----------------------------------------------------

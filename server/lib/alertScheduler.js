@@ -3,13 +3,62 @@ import { getCompany } from "./companies.js";
 import { sendAlertEmail } from "./mailer.js";
 import { isMarketOpen } from "./marketHours.js";
 import { detectMarket } from "./markets.js";
+import { sendPush } from "./pushNotifications.js";
+import { listPushSubscriptionsForUser, removePushSubscription } from "./signalSubscriptions.js";
 import {
   listActiveAlertCodes,
   listActiveAlertsForCode,
   markAlertTriggered,
   touchAlertChecked,
   markEmailResult,
+  markPushResult,
 } from "./alerts.js";
+
+/** Short push title+body for a triggered price alert — bilingual, same info as the email but terser. */
+function alertPushPayload(alert, company, currentPrice) {
+  const name = company ? (alert.lang === "ar" ? company.nameAr || company.nameEn : company.nameEn) : alert.code;
+  const market = detectMarket(alert.code);
+
+  if (alert.lang === "ar") {
+    const directionAr = alert.direction === "buy" ? "الشراء" : "البيع";
+    const currency = market === "US" ? "$" : "ر.س";
+    return {
+      title: `MyShare — تنبيه ${name}`,
+      body: `${name} (${alert.code}) وصل إلى سعر ${directionAr} المستهدف: ${currentPrice.toFixed(2)} ${currency}`,
+      url: `/?code=${alert.code}`,
+    };
+  }
+
+  const currency = market === "US" ? "USD" : "SAR";
+  return {
+    title: `MyShare — ${name} alert`,
+    body: `${name} (${alert.code}) hit your ${alert.direction} target: ${currency} ${currentPrice.toFixed(2)}`,
+    url: `/?code=${alert.code}`,
+  };
+}
+
+/**
+ * Pushes the triggered-alert notification to every device the alert's owner
+ * has registered (the same push_subscriptions used by the Signals feature —
+ * a user only grants notification permission once). Reports sent:true if
+ * ANY device received it; a dead/expired subscription (410/404) is deleted
+ * so it stops being retried on future alerts.
+ */
+async function sendAlertPush(alert, company, currentPrice) {
+  const subscriptions = listPushSubscriptionsForUser(alert.userId);
+  if (subscriptions.length === 0) return { sent: false, reason: "no_push_subscription" };
+
+  const payload = alertPushPayload(alert, company, currentPrice);
+  let anySent = false;
+  let lastReason = null;
+  for (const sub of subscriptions) {
+    const result = await sendPush(sub, payload);
+    if (result.expired) removePushSubscription(sub.endpoint);
+    if (result.sent) anySent = true;
+    else lastReason = result.reason;
+  }
+  return { sent: anySent, reason: anySent ? null : lastReason };
+}
 
 /**
  * Checks every code with at least one active alert against its LIVE price
@@ -70,6 +119,16 @@ export async function checkAlertsOnce() {
       } catch (err) {
         console.error(`[alerts] unexpected email error for alert ${alert.id}:`, err);
         markEmailResult(alert.id, false, err.message);
+      }
+
+      if (alert.pushEnabled) {
+        try {
+          const result = await sendAlertPush(alert, company, price);
+          markPushResult(alert.id, result.sent, result.sent ? null : result.reason);
+        } catch (err) {
+          console.error(`[alerts] unexpected push error for alert ${alert.id}:`, err);
+          markPushResult(alert.id, false, err.message);
+        }
       }
     }
   }

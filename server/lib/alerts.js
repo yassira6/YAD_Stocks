@@ -5,8 +5,8 @@ import { isValidCode, normalizeCode } from "./markets.js";
 const MAX_ACTIVE_ALERTS_PER_USER = 20;
 
 const insertStmt = db.prepare(`
-  INSERT INTO alerts (id, code, email, direction, target_price, lang, status, created_at, user_id)
-  VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+  INSERT INTO alerts (id, code, email, direction, target_price, lang, status, created_at, user_id, push_enabled)
+  VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
 `);
 const countActiveByUserStmt = db.prepare(`SELECT COUNT(*) AS n FROM alerts WHERE user_id = ? AND status = 'active'`);
 const listByUserStmt = db.prepare(`SELECT * FROM alerts WHERE user_id = ? ORDER BY created_at DESC`);
@@ -19,6 +19,7 @@ const markTriggeredStmt = db.prepare(`
 `);
 const touchCheckedStmt = db.prepare(`UPDATE alerts SET last_checked_at = ? WHERE id = ?`);
 const markEmailResultStmt = db.prepare(`UPDATE alerts SET email_sent = ?, email_error = ? WHERE id = ?`);
+const markPushResultStmt = db.prepare(`UPDATE alerts SET push_sent = ?, push_error = ? WHERE id = ?`);
 
 const listAllStmt = db.prepare(`
   SELECT alerts.*, users.email AS user_email, users.name AS user_name
@@ -32,6 +33,7 @@ function rowToAlert(row) {
     id: row.id,
     code: row.code,
     email: row.email,
+    userId: row.user_id,
     direction: row.direction,
     targetPrice: row.target_price,
     lang: row.lang,
@@ -42,6 +44,9 @@ function rowToAlert(row) {
     lastCheckedAt: row.last_checked_at,
     emailSent: row.email_sent == null ? null : !!row.email_sent,
     emailError: row.email_error ?? null,
+    pushEnabled: !!row.push_enabled,
+    pushSent: row.push_sent == null ? null : !!row.push_sent,
+    pushError: row.push_error ?? null,
     ...(row.user_email ? { userEmail: row.user_email, userName: row.user_name } : {}),
   };
 }
@@ -49,7 +54,7 @@ function rowToAlert(row) {
 export class ValidationError extends Error {}
 
 /** userId/email always come from the authenticated session — never client-supplied. */
-export function createAlert({ userId, email, code, direction, targetPrice, lang }) {
+export function createAlert({ userId, email, code, direction, targetPrice, lang, pushEnabled }) {
   const cleanCode = normalizeCode(code);
   const cleanLang = lang === "en" ? "en" : "ar";
 
@@ -64,7 +69,7 @@ export function createAlert({ userId, email, code, direction, targetPrice, lang 
   }
 
   const id = randomUUID();
-  insertStmt.run(id, cleanCode, email, direction, price, cleanLang, Date.now(), userId);
+  insertStmt.run(id, cleanCode, email, direction, price, cleanLang, Date.now(), userId, pushEnabled ? 1 : 0);
   return rowToAlert(getStmt.get(id));
 }
 
@@ -98,6 +103,11 @@ export function touchAlertChecked(id) {
 /** Records whether the real email send actually succeeded — visible in the UI as proof this isn't front-end-only. */
 export function markEmailResult(id, sent, error) {
   markEmailResultStmt.run(sent ? 1 : 0, error || null, id);
+}
+
+/** Same as markEmailResult, for the optional push notification on trigger. */
+export function markPushResult(id, sent, error) {
+  markPushResultStmt.run(sent ? 1 : 0, error || null, id);
 }
 
 /** Admin-only: every alert across every user, for the admin dashboard. */

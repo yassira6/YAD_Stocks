@@ -4,9 +4,18 @@ import { useCompanies } from "../lib/CompaniesContext";
 import { useAuth } from "../lib/AuthContext";
 import { SearchBar } from "./SearchBar";
 import { LoginPage } from "./LoginPage";
-import { fetchQuote, createAlert, fetchMyAlerts, cancelAlert as cancelAlertApi } from "../lib/api";
+import { Toggle } from "./Toggle";
+import {
+  fetchQuote,
+  createAlert,
+  fetchMyAlerts,
+  cancelAlert as cancelAlertApi,
+  fetchVapidPublicKey,
+  registerPushSubscription,
+} from "../lib/api";
 import { formatDateTime, formatPrice } from "../lib/format";
 import { defaultCurrency, detectMarket } from "../lib/markets";
+import { getPushBlockedReason, subscribeToPush } from "../lib/push";
 import type { AlertDirection, PriceAlert, QuoteResponse } from "../types";
 
 const STATUS_STYLES: Record<PriceAlert["status"], string> = {
@@ -32,6 +41,46 @@ export function AlertsPage() {
 
   const [myAlerts, setMyAlerts] = useState<PriceAlert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
+
+  const [pushWanted, setPushWanted] = useState(false);
+  const [pushSubscribing, setPushSubscribing] = useState(false);
+  const [pushSetupError, setPushSetupError] = useState<string | null>(null);
+  const [vapidKey, setVapidKey] = useState<string | null>(null);
+  const [pushConfigured, setPushConfigured] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchVapidPublicKey()
+      .then((v) => {
+        setVapidKey(v.publicKey);
+        setPushConfigured(v.configured);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const pushBlockedReason = getPushBlockedReason();
+
+  async function onTogglePushWanted() {
+    if (pushWanted) {
+      setPushWanted(false);
+      return;
+    }
+    if (!vapidKey) {
+      setPushSetupError(t.signalsSaveFailed);
+      return;
+    }
+    setPushSubscribing(true);
+    setPushSetupError(null);
+    try {
+      const subscription = await subscribeToPush(vapidKey);
+      await registerPushSubscription(subscription);
+      setPushWanted(true);
+    } catch {
+      setPushSetupError(t.alertsPushSetupFailed);
+    } finally {
+      setPushSubscribing(false);
+    }
+  }
 
   const company = code ? companies.find((c) => c.code === code) ?? null : null;
 
@@ -84,12 +133,13 @@ export function AlertsPage() {
     setSubmitError(null);
     setSubmitSuccess(false);
     try {
-      await createAlert({ code, direction, targetPrice: Number(targetPrice), lang });
+      await createAlert({ code, direction, targetPrice: Number(targetPrice), lang, pushEnabled: pushWanted });
       setSubmitSuccess(true);
       setCode(null);
       setQuote(null);
       setTargetPrice("");
       setTargetEdited(false);
+      setPushWanted(false);
       loadMyAlerts();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
@@ -210,6 +260,27 @@ export function AlertsPage() {
           {code && <p className="mt-1.5 text-xs text-ink-300">{t.alertsTargetHint}</p>}
         </div>
 
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-ink-700 bg-ink-850 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ink-100">{t.alertsPushToggleLabel}</p>
+            <p className="mt-0.5 text-xs text-ink-300">
+              {pushBlockedReason === "ios_not_installed"
+                ? t.signalsPushIosHint
+                : pushBlockedReason === "unsupported"
+                ? t.signalsPushUnsupported
+                : !pushConfigured
+                ? t.signalsPushNotConfigured
+                : t.alertsPushToggleHint}
+            </p>
+            {pushSetupError && <p className="mt-1 text-xs font-medium text-bear">{pushSetupError}</p>}
+          </div>
+          <Toggle
+            checked={pushWanted}
+            onChange={onTogglePushWanted}
+            disabled={pushSubscribing || !!pushBlockedReason || !pushConfigured}
+          />
+        </div>
+
         {submitError && <p className="text-sm font-medium text-bear">{submitError}</p>}
         {submitSuccess && <p className="text-sm font-medium text-brand-300">{t.alertsCreated}</p>}
 
@@ -268,6 +339,23 @@ export function AlertsPage() {
                           ) : (
                             <span className="text-bear">{t.emailSentNo}</span>
                           )}
+                        </>
+                      )}
+                      {a.status === "triggered" && a.pushEnabled && (
+                        <>
+                          {" · "}
+                          {t.pushDeliveryLabel}:{" "}
+                          {a.pushSent ? (
+                            <span className="text-brand-300">{t.emailSentYes}</span>
+                          ) : (
+                            <span className="text-bear">{t.emailSentNo}</span>
+                          )}
+                        </>
+                      )}
+                      {a.status === "active" && a.pushEnabled && (
+                        <>
+                          {" · "}
+                          <span className="text-brand-300">{t.alertsPushEnabledBadge}</span>
                         </>
                       )}
                     </p>

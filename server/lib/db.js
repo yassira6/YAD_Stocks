@@ -86,6 +86,19 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  -- Mirrors admin_emails, for the admin's free-text PUSH message to a
+  -- selected user (title + body sent to every device they've registered).
+  CREATE TABLE IF NOT EXISTS admin_pushes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    sent_by TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    sent INTEGER,
+    error TEXT,
+    created_at INTEGER NOT NULL
+  );
+
   -- One row per user: whether they want email/push notifications for
   -- market-wide strong-buy/strong-sell signals (a separate opt-in from the
   -- per-stock price alerts in the 'alerts' table above).
@@ -144,5 +157,8 @@ ensureColumn("alerts", "email_sent", "email_sent INTEGER");
 ensureColumn("alerts", "email_error", "email_error TEXT");
 db.exec(`CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)`);
 ensureColumn("companies", "market", "market TEXT NOT NULL DEFAULT 'TASI'");
+ensureColumn("alerts", "push_enabled", "push_enabled INTEGER NOT NULL DEFAULT 0");
+ensureColumn("alerts", "push_sent", "push_sent INTEGER");
+ensureColumn("alerts", "push_error", "push_error TEXT");
 
 export { DB_PATH };

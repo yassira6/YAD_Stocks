@@ -4,7 +4,7 @@ import { useAuth } from "../lib/AuthContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { formatDateTime, formatPrice } from "../lib/format";
 import { defaultCurrency, detectMarket } from "../lib/markets";
-import { sendUserEmail, fetchActiveSignals, triggerSignalScan } from "../lib/api";
+import { sendUserEmail, sendUserPush, fetchActiveSignals, triggerSignalScan } from "../lib/api";
 import type { AdminStatus, CompanySignal, PriceAlert, User } from "../types";
 
 function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
@@ -19,28 +19,48 @@ function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
   );
 }
 
-function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) {
+function SendMessageModal({ user, onClose }: { user: User; onClose: () => void }) {
   const { t } = useLanguage();
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [emailChecked, setEmailChecked] = useState(true);
+  const [pushChecked, setPushChecked] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<"sent" | "failed" | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [emailResult, setEmailResult] = useState<"sent" | "failed" | null>(null);
+  const [emailErrorMsg, setEmailErrorMsg] = useState<string | null>(null);
+  const [pushResult, setPushResult] = useState<"sent" | "failed" | null>(null);
+  const [pushErrorMsg, setPushErrorMsg] = useState<string | null>(null);
 
   async function submit() {
+    if (!emailChecked && !pushChecked) return;
     setSending(true);
-    setResult(null);
-    setErrorMsg(null);
-    try {
-      await sendUserEmail(user.id, { subject, body });
-      setResult("sent");
-    } catch (err) {
-      setResult("failed");
-      setErrorMsg(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSending(false);
+    setEmailResult(null);
+    setEmailErrorMsg(null);
+    setPushResult(null);
+    setPushErrorMsg(null);
+
+    if (emailChecked) {
+      try {
+        await sendUserEmail(user.id, { subject, body });
+        setEmailResult("sent");
+      } catch (err) {
+        setEmailResult("failed");
+        setEmailErrorMsg(err instanceof Error ? err.message : String(err));
+      }
     }
+    if (pushChecked) {
+      try {
+        await sendUserPush(user.id, { title: subject, body });
+        setPushResult("sent");
+      } catch (err) {
+        setPushResult("failed");
+        setPushErrorMsg(err instanceof Error ? err.message : String(err));
+      }
+    }
+    setSending(false);
   }
+
+  const bodyMaxLength = pushChecked ? 1000 : 10000;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
@@ -49,9 +69,30 @@ function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) 
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-base font-semibold text-ink-100">
-          {t.adminSendEmail} — {user.name || user.email}
+          {t.adminSendMessage} — {user.name || user.email}
         </h3>
         <p className="mt-1 text-xs text-ink-300">{user.email}</p>
+
+        <div className="mt-4 flex gap-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-100">
+            <input
+              type="checkbox"
+              checked={emailChecked}
+              onChange={(e) => setEmailChecked(e.target.checked)}
+              className="h-4 w-4 cursor-pointer accent-brand-600"
+            />
+            {t.adminChannelEmail}
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-100">
+            <input
+              type="checkbox"
+              checked={pushChecked}
+              onChange={(e) => setPushChecked(e.target.checked)}
+              className="h-4 w-4 cursor-pointer accent-brand-600"
+            />
+            {t.adminChannelPush}
+          </label>
+        </div>
 
         <div className="mt-4 space-y-3">
           <div>
@@ -60,7 +101,7 @@ function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) 
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              maxLength={200}
+              maxLength={pushChecked ? 100 : 200}
               className="w-full rounded-xl border border-ink-600 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-brand-500"
             />
           </div>
@@ -69,17 +110,24 @@ function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) 
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              maxLength={10000}
+              maxLength={bodyMaxLength}
               rows={6}
               className="w-full rounded-xl border border-ink-600 bg-ink-850 px-3 py-2 text-sm text-ink-100 outline-none focus:border-brand-500"
             />
           </div>
         </div>
 
-        {result === "sent" && <p className="mt-3 text-sm font-semibold text-brand-300">{t.adminEmailSent}</p>}
-        {result === "failed" && (
+        {!emailChecked && !pushChecked && <p className="mt-3 text-sm font-medium text-bear">{t.adminNoChannelSelected}</p>}
+        {emailResult === "sent" && <p className="mt-3 text-sm font-semibold text-brand-300">{t.adminChannelEmail}: {t.adminEmailSent}</p>}
+        {emailResult === "failed" && (
           <p className="mt-3 text-sm font-semibold text-bear">
-            {t.adminEmailFailed} {errorMsg ? `(${errorMsg})` : ""}
+            {t.adminChannelEmail}: {t.adminEmailFailed} {emailErrorMsg ? `(${emailErrorMsg})` : ""}
+          </p>
+        )}
+        {pushResult === "sent" && <p className="mt-1 text-sm font-semibold text-brand-300">{t.adminChannelPush}: {t.adminEmailSent}</p>}
+        {pushResult === "failed" && (
+          <p className="mt-1 text-sm font-semibold text-bear">
+            {t.adminChannelPush}: {t.adminEmailFailed} {pushErrorMsg ? `(${pushErrorMsg})` : ""}
           </p>
         )}
 
@@ -94,7 +142,7 @@ function SendEmailModal({ user, onClose }: { user: User; onClose: () => void }) 
           <button
             type="button"
             onClick={submit}
-            disabled={sending || !subject.trim() || !body.trim()}
+            disabled={sending || !subject.trim() || !body.trim() || (!emailChecked && !pushChecked)}
             className="cursor-pointer rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sending ? t.adminEmailSending : t.adminEmailSend}
@@ -266,7 +314,7 @@ export function AdminPage() {
                       onClick={() => setEmailTarget(u)}
                       className="cursor-pointer rounded-full border border-ink-600 px-3 py-1 text-xs font-semibold text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
                     >
-                      {t.adminSendEmail}
+                      {t.adminSendMessage}
                     </button>
                   </td>
                 </tr>
@@ -276,7 +324,7 @@ export function AdminPage() {
         </div>
       </div>
 
-      {emailTarget && <SendEmailModal user={emailTarget} onClose={() => setEmailTarget(null)} />}
+      {emailTarget && <SendMessageModal user={emailTarget} onClose={() => setEmailTarget(null)} />}
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
         <h3 className="text-base font-semibold text-ink-100">{t.adminAlertsTitle}</h3>
@@ -298,6 +346,19 @@ export function AdminPage() {
                       <span className="text-xs font-semibold text-brand-300">{t.emailSentYes}</span>
                     ) : (
                       <span className="text-xs font-semibold text-bear" title={a.emailError || ""}>
+                        {t.emailSentNo}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-2.5 pe-3">
+                    {!a.pushEnabled ? (
+                      <span className="text-xs text-ink-300/60">—</span>
+                    ) : a.pushSent === null ? (
+                      <span className="text-xs text-ink-300">{t.emailSentPending}</span>
+                    ) : a.pushSent ? (
+                      <span className="text-xs font-semibold text-brand-300">{t.emailSentYes}</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-bear" title={a.pushError || ""}>
                         {t.emailSentNo}
                       </span>
                     )}

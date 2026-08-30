@@ -106,6 +106,9 @@ export interface PriceAlert {
   lastCheckedAt: number | null;
   emailSent: boolean | null;
   emailError: string | null;
+  pushEnabled: boolean;
+  pushSent: boolean | null;
+  pushError: string | null;
   userEmail?: string;
   userName?: string | null;
 }

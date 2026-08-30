@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useAuth } from "../lib/AuthContext";
 import { LoginPage } from "./LoginPage";
+import { Toggle } from "./Toggle";
 import {
   fetchSignalSubscription,
   fetchVapidPublicKey,
@@ -11,27 +12,6 @@ import {
 } from "../lib/api";
 import { getPushBlockedReason, subscribeToPush, unsubscribeFromPush } from "../lib/push";
 import type { SignalSubscription } from "../types";
-
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      disabled={disabled}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-40 ${
-        checked ? "bg-brand-600" : "bg-ink-700"
-      }`}
-    >
-      <span
-        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-[1.375rem] rtl:-translate-x-[1.375rem]" : "translate-x-1 rtl:-translate-x-1"
-        }`}
-      />
-    </button>
-  );
-}
 
 export function SignalsPage() {
   const { t, lang } = useLanguage();

@@ -7,10 +7,11 @@ import { isGoogleConfigured, isAppleConfigured } from "./oidcProviders.js";
 import { recordAdminEmail, listAdminEmailsForUser } from "./adminEmails.js";
 import { getPriceSourceName } from "./priceProvider.js";
 import { isMarketOpen } from "./marketHours.js";
-import { isPushConfigured } from "./pushNotifications.js";
-import { countSignalSubscribers } from "./signalSubscriptions.js";
+import { isPushConfigured, sendPush } from "./pushNotifications.js";
+import { countSignalSubscribers, listPushSubscriptionsForUser, removePushSubscription } from "./signalSubscriptions.js";
 import { listActiveSignals } from "./companySignals.js";
 import { scanForSignalsOnce } from "./signalScanner.js";
+import { recordAdminPush, listAdminPushesForUser } from "./adminPushes.js";
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAdmin);
@@ -73,6 +74,60 @@ adminRouter.post("/users/:id/email", async (req, res) => {
 
 adminRouter.get("/users/:id/emails", (req, res) => {
   res.json(listAdminEmailsForUser(req.params.id));
+});
+
+// Free-text PUSH notification to a specific user — sent to every device
+// they've registered (same push_subscriptions the Signals feature and
+// per-alert push opt-in use). Mirrors the email endpoint above.
+adminRouter.post("/users/:id/push", async (req, res) => {
+  const target = getUserById(req.params.id);
+  if (!target) return res.status(404).json({ error: "User not found." });
+
+  const title = String(req.body?.title || "").trim();
+  const body = String(req.body?.body || "").trim();
+  if (!title || !body) {
+    return res.status(400).json({ error: "title and body are required." });
+  }
+  if (title.length > 100 || body.length > 1000) {
+    return res.status(400).json({ error: "title or body too long." });
+  }
+  if (!isPushConfigured()) {
+    return res.status(400).json({ error: "push_not_configured", sent: false });
+  }
+
+  const subscriptions = listPushSubscriptionsForUser(target.id);
+  if (subscriptions.length === 0) {
+    const error = "User has no registered push subscriptions.";
+    recordAdminPush({ userId: target.id, sentBy: req.user.email, title, body, sent: false, error });
+    return res.status(400).json({ error, sent: false });
+  }
+
+  let anySent = false;
+  let lastReason = null;
+  for (const sub of subscriptions) {
+    const result = await sendPush(sub, { title, body, url: "/" });
+    if (result.expired) removePushSubscription(sub.endpoint);
+    if (result.sent) anySent = true;
+    else lastReason = result.reason;
+  }
+
+  recordAdminPush({
+    userId: target.id,
+    sentBy: req.user.email,
+    title,
+    body,
+    sent: anySent,
+    error: anySent ? null : lastReason,
+  });
+
+  if (!anySent) {
+    return res.status(502).json({ error: lastReason || "Send failed.", sent: false });
+  }
+  res.json({ sent: true });
+});
+
+adminRouter.get("/users/:id/pushes", (req, res) => {
+  res.json(listAdminPushesForUser(req.params.id));
 });
 
 // The analysis currently being fanned out to signal subscribers — every

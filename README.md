@@ -181,6 +181,18 @@ real backend delivery path and not a front-end-only feature. Without SMTP
 credentials the app still works fully end-to-end (create/check/trigger),
 it just logs instead of sending and marks `email_sent: false`:
 
+**Push is an optional add-on per alert**, alongside email (email always
+fires; push is opt-in). The "Create an alert" form has an "Also notify me
+via push" toggle — turning it on runs the same browser subscribe flow as
+the Signals feature (see below), reusing the same per-device registration,
+so a user only grants notification permission once for it to cover both
+features. On trigger, the scheduler sends to every device the user has
+registered and records the outcome the same way as email
+(`push_sent`/`push_error` on the alert row, shown in the UI as "Push:
+Sent"/"Failed"). Requires `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` to be set
+(see "Strong buy/sell signal subscriptions" below) — without them the
+toggle is shown disabled and alerts still work by email alone.
+
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `SMTP_HOST` | for email | e.g. `smtp.sendgrid.net`, `smtp.mailgun.org`, `smtp.gmail.com` |
@@ -205,17 +217,21 @@ directly" below) — a real message through the same `sendMail()` path alert
 emails use. `smtpConfigured` on the Admin status card also just reflects
 whether those env vars are set, not whether a send has actually succeeded.
 
-### Admin: emailing a user directly
+### Admin: messaging a user directly
 
-From the Admin page, each row in the Users table has a **Send email**
-button that opens a free-text subject + message composer and sends a real
-email to that user's account address via the same SMTP configuration as
-alert emails (`server/lib/mailer.js`'s `sendMail()`). Every attempt —
-success or failure, with the error if it failed — is written to an
-`admin_emails` audit table (`server/lib/adminEmails.js`) so there's a record
-of what was sent to whom. Without SMTP configured, the send fails with
-`smtp_not_configured` and that failure is still logged, same as alert
-emails.
+From the Admin page, each row in the Users table has a **Send message**
+button that opens a free-text subject/title + body composer with two
+independent channel checkboxes — **Email** (checked by default) and
+**Push**. Checking Email sends via the same SMTP configuration as alert
+emails; checking Push sends a real Web Push notification to every device
+that user has registered (same `push_subscriptions` as the Signals feature
+and per-alert push). Both channels can be sent together in one action, and
+each reports its own success/failure independently in the modal. Every
+attempt — either channel, success or failure, with the error if it failed —
+is written to its own audit table (`admin_emails` / `admin_pushes`) so
+there's a record of what was sent to whom and how. Sending push to a user
+with no registered devices fails with a clear "no registered push
+subscriptions" error rather than silently doing nothing.
 
 ## Strong buy/sell signal subscriptions (email + push)
 
