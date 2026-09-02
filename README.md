@@ -91,6 +91,52 @@ investment advice" framing as the rest of the app. Returns `null` (and the
 panel doesn't render) when there's under 20 days of history to fit a trend
 to.
 
+## Long-Term Trading — position-trading entries/exits
+
+A third, separate panel (`server/lib/longTermAnalysis.js`, rendered by
+`client/src/components/LongTermPanel.tsx`) aimed at longer holding periods
+than the composite score or the 7-day forecast above. It needs at least 60
+daily bars, and computes:
+
+- **SMA(50/100/200)** — reusing the exact same `sma()` function as the
+  composite score (now exported from `server/lib/analysis.js` so both stay
+  consistent), with SMA100/200 omitted (shown as "not available") when
+  there isn't enough history yet. **Golden cross** / **death cross** badges
+  fire when SMA50 has crossed to the other side of SMA200 within the last
+  ~10 sessions. Overall **trend** (uptrend/downtrend/neutral) comes from
+  price vs. SMA50 vs. SMA100 alignment.
+- **RSI(14)** and **MACD** — again the same shared functions as the
+  composite score, just surfaced here for the long-term read too.
+- **Algorithmic support & resistance** — not analyst-drawn levels. The
+  engine finds swing highs/lows over roughly the last 14 months (a bar
+  that's the local extreme within a ±5-bar window), clusters swing points
+  that land within 1.5% of each other into a single "level," and scores
+  each level by touch count plus recency. The nearest 3 support levels
+  (below price) and 3 resistance levels (above price) are shown, each with
+  its touch count and % distance from the current price.
+- **Suggested entry/exit** — simply the nearest support (entry) and nearest
+  resistance (exit) from the above, with a plain-language note. This is a
+  mechanical reading of the levels, not a signal to act on by itself.
+- **Short interest (US tickers only)** — % of float short and the short
+  ratio (days-to-cover), fetched from Yahoo Finance's `quoteSummary`
+  endpoint (`server/lib/shortInterest.js`), a different Yahoo endpoint than
+  the price/chart data the rest of the app uses. This is a US-market-only
+  concept — Tadawul (TASI) has no equivalent public short-interest feed via
+  Yahoo, so it's never attempted for TASI codes, and the section shows "not
+  available" for them. It's also only fetched when quote data came back
+  **live** (never for demo/fallback data), is cached for 24h since it only
+  updates a couple of times a month, and fails closed to "not available" on
+  any network/parse error rather than risk showing a stale or wrong number.
+  **Honesty note:** this sandbox's network access to Yahoo is blocked, so
+  this specific piece could only be shaped from the documented Yahoo field
+  layout and exercised with demo data end-to-end (confirming it stays
+  `null` and the section degrades gracefully) — it has not been verified
+  against a real Yahoo `quoteSummary` response.
+
+Like the rest of the app, this panel makes no accounting for fundamentals,
+news, or upcoming events — it's a mechanical, inspectable read of price
+history and (for US tickers) reported short interest.
+
 ## Data source, the dynamic company directory & known limitations
 
 - Prices come from Yahoo Finance's public chart endpoint. **TASI** (Tadawul)

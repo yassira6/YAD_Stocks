@@ -12,6 +12,7 @@ import { WatchlistPage } from "./components/WatchlistPage";
 import { LoginPage } from "./components/LoginPage";
 import { AdminPage } from "./components/AdminPage";
 import { SevenDayForecastPanel } from "./components/SevenDayForecastPanel";
+import { LongTermPanel } from "./components/LongTermPanel";
 import { useLanguage } from "./i18n/LanguageContext";
 import { useCompanies } from "./lib/CompaniesContext";
 import { fetchQuote } from "./lib/api";
@@ -189,6 +190,9 @@ export default function App() {
                   </div>
                   <div className="lg:col-span-2">
                     <AnalysisPanel analysis={quote.analysis} currency={quote.currency} />
+                  </div>
+                  <div className="lg:col-span-5">
+                    <LongTermPanel longTerm={quote.longTerm} currency={quote.currency} />
                   </div>
                 </div>
               )}

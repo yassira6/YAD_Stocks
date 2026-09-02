@@ -8,6 +8,8 @@ import { execSync } from "node:child_process";
 import { fetchHistory } from "./lib/priceProvider.js";
 import { analyzeSeries } from "./lib/analysis.js";
 import { predictSevenDayMovement } from "./lib/prediction.js";
+import { analyzeLongTerm } from "./lib/longTermAnalysis.js";
+import { fetchShortInterest } from "./lib/shortInterest.js";
 import { generateDemoHistory } from "./lib/demoData.js";
 import { seedCompanies, listCompanies, touchCompanyFromLiveQuote } from "./lib/companies.js";
 import { createAlert, listAlertsByUser, cancelAlert, ValidationError } from "./lib/alerts.js";
@@ -131,11 +133,17 @@ app.get("/api/quote/:code", async (req, res) => {
 
   const analysis = analyzeSeries(history.series);
   const sevenDayForecast = analysis.insufficientData ? null : predictSevenDayMovement(history.series);
+  const longTerm = analyzeLongTerm(history.series);
+  // Short interest is US-only and never fetched for demo data — same rule as
+  // the company directory: only a confirmed-live lookup can surface it.
+  const shortInterest = dataSource === "live" ? await fetchShortInterest(code) : null;
+  if (longTerm) longTerm.shortInterest = shortInterest;
   const status = getMarketStatus(market);
   const payload = {
     ...history,
     analysis,
     sevenDayForecast,
+    longTerm,
     dataSource,
     liveError,
     marketOpen: status.open,

@@ -4,7 +4,9 @@
 // into one weighted composite recommendation. Every contributing signal is returned
 // with a bilingual (en/ar) explanation so the UI can show its reasoning, not just a verdict.
 
-function sma(values, period) {
+// sma/rsi/macd are also reused by lib/longTermAnalysis.js, so the exact same
+// math backs both the short/medium-term composite score and the long-term panel.
+export function sma(values, period) {
   const out = new Array(values.length).fill(null);
   let sum = 0;
   for (let i = 0; i < values.length; i++) {
@@ -36,7 +38,7 @@ function ema(values, period) {
   return out;
 }
 
-function rsi(closes, period = 14) {
+export function rsi(closes, period = 14) {
   const out = new Array(closes.length).fill(null);
   let avgGain = 0;
   let avgLoss = 0;
@@ -61,7 +63,7 @@ function rsi(closes, period = 14) {
   return out;
 }
 
-function macd(closes, fast = 12, slow = 26, signalPeriod = 9) {
+export function macd(closes, fast = 12, slow = 26, signalPeriod = 9) {
   const emaFast = ema(closes, fast);
   const emaSlow = ema(closes, slow);
   const macdLine = closes.map((_, i) =>

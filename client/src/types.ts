@@ -87,6 +87,40 @@ export interface SevenDayForecast {
   note: { en: string; ar: string };
 }
 
+export type LongTermTrend = "uptrend" | "downtrend" | "neutral";
+
+export interface PriceLevel {
+  price: number;
+  touches: number;
+  distancePct: number;
+}
+
+export interface ShortInterest {
+  shortPercentOfFloat: number | null;
+  shortRatio: number | null;
+  sharesShort: number | null;
+  floatShares: number | null;
+  asOf: number | null;
+}
+
+export interface LongTermAnalysis {
+  price: number;
+  sma50: number;
+  sma100: number | null;
+  sma200: number | null;
+  trend: LongTermTrend;
+  goldenCross: boolean;
+  deathCross: boolean;
+  rsi14: number | null;
+  macd: { macdLine: number | null; signalLine: number | null; histogram: number | null };
+  support: PriceLevel[];
+  resistance: PriceLevel[];
+  entry: { price: number; note: { en: string; ar: string } } | null;
+  exit: { price: number; note: { en: string; ar: string } } | null;
+  note: { en: string; ar: string };
+  shortInterest?: ShortInterest | null;
+}
+
 export interface QuoteResponse {
   symbol: string;
   code: string;
@@ -99,6 +133,7 @@ export interface QuoteResponse {
   series: Bar[];
   analysis: Analysis;
   sevenDayForecast: SevenDayForecast | null;
+  longTerm: LongTermAnalysis | null;
   dataSource: "live" | "demo";
   liveError: string | null;
   marketOpen: boolean;
