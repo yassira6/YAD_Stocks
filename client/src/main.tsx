@@ -6,15 +6,18 @@ import { LanguageProvider } from "./i18n/LanguageContext";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { CompaniesProvider } from "./lib/CompaniesContext";
 import { AuthProvider } from "./lib/AuthContext";
+import { WatchlistProvider } from "./lib/WatchlistContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
-          <CompaniesProvider>
-            <App />
-          </CompaniesProvider>
+          <WatchlistProvider>
+            <CompaniesProvider>
+              <App />
+            </CompaniesProvider>
+          </WatchlistProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

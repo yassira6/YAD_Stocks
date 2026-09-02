@@ -8,8 +8,10 @@ import { DemoBanner } from "./components/DemoBanner";
 import { Footer } from "./components/Footer";
 import { AlertsPage } from "./components/AlertsPage";
 import { SignalsPage } from "./components/SignalsPage";
+import { WatchlistPage } from "./components/WatchlistPage";
 import { LoginPage } from "./components/LoginPage";
 import { AdminPage } from "./components/AdminPage";
+import { SevenDayForecastPanel } from "./components/SevenDayForecastPanel";
 import { useLanguage } from "./i18n/LanguageContext";
 import { useCompanies } from "./lib/CompaniesContext";
 import { fetchQuote } from "./lib/api";
@@ -29,7 +31,9 @@ export default function App() {
   const { t } = useLanguage();
   const { companies, refresh: refreshCompanies } = useCompanies();
   const [view, setView] = useState<View>(() => parseHash().view);
-  const [code, setCode] = useState<string | null>(null);
+  // Deep-link support: "#/?code=AAPL" (what alert/signal notification emails
+  // link to) preselects that company on the stock view.
+  const [code, setCode] = useState<string | null>(() => parseHash().params.get("code"));
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,7 +44,14 @@ export default function App() {
   const quoteRef = useRef<QuoteResponse | null>(null);
 
   useEffect(() => {
-    const onHashChange = () => setView(parseHash().view);
+    const onHashChange = () => {
+      const { view: v, params } = parseHash();
+      setView(v);
+      if (v === "stock") {
+        const c = params.get("code");
+        if (c) setCode(c);
+      }
+    };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
@@ -118,6 +129,8 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
         {view === "login" ? (
           <LoginPage />
+        ) : view === "watchlist" ? (
+          <WatchlistPage />
         ) : view === "alerts" ? (
           <AlertsPage />
         ) : view === "signals" ? (
@@ -172,6 +185,7 @@ export default function App() {
                       onRefresh={() => load(code, { silent: true })}
                     />
                     <PriceChart series={quote.series} />
+                    <SevenDayForecastPanel forecast={quote.sevenDayForecast} currency={quote.currency} />
                   </div>
                   <div className="lg:col-span-2">
                     <AnalysisPanel analysis={quote.analysis} currency={quote.currency} />

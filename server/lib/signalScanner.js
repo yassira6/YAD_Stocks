@@ -19,7 +19,7 @@ import {
  * it stops being retried on future signals.
  */
 async function notifySubscribers(signal) {
-  const emailSubscribers = listEmailSignalSubscribers();
+  const emailSubscribers = listEmailSignalSubscribers(signal.code);
   for (const sub of emailSubscribers) {
     try {
       await sendSignalEmail(sub.email, sub.lang, signal);
@@ -28,7 +28,7 @@ async function notifySubscribers(signal) {
     }
   }
 
-  const pushSubscriptions = listPushSignalSubscriptions();
+  const pushSubscriptions = listPushSignalSubscriptions(signal.code);
   const payload = {
     title: signal.verdict === "strong_buy" ? "🚀 Strong Buy signal" : "⚠️ Strong Sell signal",
     body: `${signal.nameEn || signal.code} (${signal.code}) — score ${signal.score > 0 ? "+" : ""}${signal.score}`,

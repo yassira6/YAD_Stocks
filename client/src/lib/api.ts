@@ -1,4 +1,13 @@
-import type { AlertDirection, CompanySignal, PriceAlert, QuoteResponse, SignalSubscription } from "../types";
+import type {
+  AdminUserDetail,
+  AlertDirection,
+  CompanySignal,
+  PriceAlert,
+  QuoteResponse,
+  SignalScope,
+  SignalSubscription,
+  WatchlistItem,
+} from "../types";
 
 async function unwrap<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -75,6 +84,7 @@ export async function fetchSignalSubscription(): Promise<SignalSubscription> {
 export async function updateSignalSubscription(input: {
   emailEnabled: boolean;
   pushEnabled: boolean;
+  scope: SignalScope;
   lang: "en" | "ar";
 }): Promise<SignalSubscription> {
   return unwrap(
@@ -117,4 +127,42 @@ export async function fetchActiveSignals(): Promise<CompanySignal[]> {
 
 export async function triggerSignalScan(): Promise<{ scanned: number; newSignals: number }> {
   return unwrap(await fetch("/api/admin/signals/scan", { method: "POST", credentials: "same-origin" }));
+}
+
+// --- Watchlist ------------------------------------------------------------
+
+export async function fetchWatchlist(): Promise<WatchlistItem[]> {
+  return unwrap(await fetch("/api/watchlist", { credentials: "same-origin" }));
+}
+
+export async function addWatchlistItem(code: string): Promise<WatchlistItem> {
+  return unwrap(
+    await fetch("/api/watchlist", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    })
+  );
+}
+
+export async function removeWatchlistItem(code: string): Promise<void> {
+  await unwrap(await fetch(`/api/watchlist/${encodeURIComponent(code)}`, { method: "DELETE", credentials: "same-origin" }));
+}
+
+export async function setWatchlistItemAlerts(code: string, enabled: boolean): Promise<WatchlistItem> {
+  return unwrap(
+    await fetch(`/api/watchlist/${encodeURIComponent(code)}/alerts`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    })
+  );
+}
+
+// --- Admin: user detail ---------------------------------------------------
+
+export async function fetchAdminUserDetail(userId: string): Promise<AdminUserDetail> {
+  return unwrap(await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, { credentials: "same-origin" }));
 }

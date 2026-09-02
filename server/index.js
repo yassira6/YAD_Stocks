@@ -7,6 +7,7 @@ import fs from "node:fs";
 import { execSync } from "node:child_process";
 import { fetchHistory } from "./lib/priceProvider.js";
 import { analyzeSeries } from "./lib/analysis.js";
+import { predictSevenDayMovement } from "./lib/prediction.js";
 import { generateDemoHistory } from "./lib/demoData.js";
 import { seedCompanies, listCompanies, touchCompanyFromLiveQuote } from "./lib/companies.js";
 import { createAlert, listAlertsByUser, cancelAlert, ValidationError } from "./lib/alerts.js";
@@ -25,6 +26,13 @@ import {
   removePushSubscription,
   hasPushRegistration,
 } from "./lib/signalSubscriptions.js";
+import {
+  addWatchlistItem,
+  removeWatchlistItem,
+  listWatchlistForUser,
+  setWatchlistItemAlerts,
+  ValidationError as WatchlistValidationError,
+} from "./lib/watchlist.js";
 
 const app = express();
 const PORT = process.env.PORT || 5174;
@@ -122,8 +130,17 @@ app.get("/api/quote/:code", async (req, res) => {
   }
 
   const analysis = analyzeSeries(history.series);
+  const sevenDayForecast = analysis.insufficientData ? null : predictSevenDayMovement(history.series);
   const status = getMarketStatus(market);
-  const payload = { ...history, analysis, dataSource, liveError, marketOpen: status.open, marketCloseReason: status.reason };
+  const payload = {
+    ...history,
+    analysis,
+    sevenDayForecast,
+    dataSource,
+    liveError,
+    marketOpen: status.open,
+    marketCloseReason: status.reason,
+  };
   // While the market's closed, nothing here can change — cache much longer
   // so auto-refreshes (and other visitors looking at the same code) don't
   // re-hit the upstream provider for no reason.
@@ -216,6 +233,7 @@ app.put("/api/signals/subscription", requireAuth, (req, res) => {
   setSignalSubscription(req.user.id, {
     emailEnabled: !!req.body?.emailEnabled,
     pushEnabled: !!req.body?.pushEnabled,
+    scope: req.body?.scope,
     lang: req.body?.lang,
   });
   res.json(signalSubscriptionPayload(req.user.id));
@@ -235,6 +253,46 @@ app.post("/api/signals/push-subscribe", requireAuth, (req, res) => {
 app.post("/api/signals/push-unsubscribe", requireAuth, (req, res) => {
   if (req.body?.endpoint) removePushSubscription(req.body.endpoint);
   res.json({ ok: true });
+});
+
+// --- Watchlist ----------------------------------------------------------------
+// Every route requires a signed-in session; a user only ever reads/writes their
+// own watchlist (userId always comes from the session, never the request body).
+
+app.get("/api/watchlist", requireAuth, (req, res) => {
+  res.json(listWatchlistForUser(req.user.id));
+});
+
+app.post("/api/watchlist", requireAuth, (req, res) => {
+  try {
+    const item = addWatchlistItem(req.user.id, req.body?.code);
+    res.status(201).json(item);
+  } catch (err) {
+    if (err instanceof WatchlistValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error("[watchlist] add failed:", err);
+    res.status(500).json({ error: "Could not add to watchlist." });
+  }
+});
+
+app.delete("/api/watchlist/:code", requireAuth, (req, res) => {
+  const ok = removeWatchlistItem(req.user.id, req.params.code);
+  if (!ok) return res.status(404).json({ error: "Not in your watchlist." });
+  res.json({ ok: true });
+});
+
+app.put("/api/watchlist/:code/alerts", requireAuth, (req, res) => {
+  try {
+    const item = setWatchlistItemAlerts(req.user.id, req.params.code, !!req.body?.enabled);
+    res.json(item);
+  } catch (err) {
+    if (err instanceof WatchlistValidationError) {
+      return res.status(404).json({ error: err.message });
+    }
+    console.error("[watchlist] set alerts failed:", err);
+    res.status(500).json({ error: "Could not update watchlist alert setting." });
+  }
 });
 
 if (SERVES_CLIENT) {

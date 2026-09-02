@@ -70,6 +70,27 @@ runs above its own moving averages in a strong uptrend).
 **This is not investment advice.** It's a rules-based technical read on
 historical price/volume data, shown as such in the app itself.
 
+## "7 Days Future Movement" — a separate, additional forecast
+
+Shown on the stock page below the chart, distinct from (not a replacement
+for) the composite recommendation above: `server/lib/prediction.js`
+projects price 7 trading days forward using **one single, inspectable
+method** — a linear regression fit through the last 20 closes, extrapolated
+forward, with a range band derived from recent daily-return volatility
+(scaled by `sqrt(7)`, the standard way a random walk's uncertainty grows
+over time). The projected move is classified **Buy / Sell / Keep** against
+a noise threshold (so a flat, choppy stock doesn't flip calls on rounding),
+alongside a "buy near"/"sell near" price pair (the lower/upper edge of that
+band).
+
+This is explicitly **not a machine-learning model** and makes no accuracy
+claim — it's a straight-line extrapolation of recent momentum, which by
+construction cannot foresee news, earnings, or a genuine trend reversal.
+It's offered as one more transparent, mechanical read, with the same "not
+investment advice" framing as the rest of the app. Returns `null` (and the
+panel doesn't render) when there's under 20 days of history to fit a trend
+to.
+
 ## Data source, the dynamic company directory & known limitations
 
 - Prices come from Yahoo Finance's public chart endpoint. **TASI** (Tadawul)
@@ -289,6 +310,35 @@ feed — see the mechanics below.
   **Scan now** button to trigger a scan on demand (useful right after
   setting up SMTP/VAPID, instead of waiting for the next interval).
 
+## Watchlist
+
+The **Watchlist** nav tab (signed-in users only) is a personal list of
+companies, independent of price alerts:
+
+- **Adding a stock**, two ways: the **+** button next to any search result
+  (search bar on the home page, Alerts page, or the Watchlist page's own
+  search box) — it toggles to a checkmark once added, and back if you click
+  it again to remove; or the small search box directly on the Watchlist
+  page.
+- **Removing** a stock is a button on its row in the watchlist list.
+- **Scoping strong-buy/sell signal alerts to the watchlist**: on the
+  Signals page (see above), the "Which stocks to notify me about" choice —
+  **All tracked stocks** or **Only my watchlist** — is a new `scope` on the
+  same `signal_subscriptions` row used for the email/push toggles, so it's
+  one consistent subscription, just narrowed. With "Only my watchlist"
+  selected, a stock only fires notifications once its own row's **Alerts**
+  toggle in the Watchlist page is turned on — adding a stock to the
+  watchlist does **not** by itself opt it into notifications, so "specific
+  stock" vs. "my whole watchlist" is just how many rows you flip that
+  toggle on for. `server/lib/signalScanner.js` checks this per company per
+  subscriber (`server/lib/signalSubscriptions.js`'s scope-aware queries),
+  so scope='all' subscribers are unaffected by any of this.
+- **Admin visibility**: from the Admin page's Users table, **View** opens a
+  detail panel for that user — profile info, their full watchlist (with
+  which items have alerts on), their signal-notification preferences
+  (channels + scope), and their price alerts (filtered from the existing
+  alerts table) — via a new `GET /api/admin/users/:id` endpoint.
+
 ## Price source configuration
 
 Prices are fetched through a small provider registry
@@ -436,6 +486,20 @@ component markup. The one exception is the price chart
 (`client/src/components/PriceChart.tsx`): `lightweight-charts` draws to a
 `<canvas>`, which can't resolve a CSS variable, so it keeps a small
 hand-written light/dark palette in sync with the same tokens.
+
+## Language (auto-detected, then remembered)
+
+Same pattern as the theme: a first-time visitor gets whatever their
+browser/device is set to — `navigator.languages` is checked in order for
+the first English or Arabic entry (`client/src/i18n/LanguageContext.tsx`'s
+`detectBrowserLang()`); a browser set to neither (e.g. French) falls back
+to Arabic, the app's original default. The language toggle in the header
+overrides this and is saved (`localStorage`) — from then on that saved
+choice always wins over the browser locale, on every future visit,
+regardless of what the OS language is set to. As with the theme, a small
+inline script in `client/index.html` applies the detected/saved language's
+`lang`/`dir` to `<html>` before first paint, so there's no flash from the
+hardcoded `ar`/`rtl` markup default to the real value once React mounts.
 
 ## Version footer
 

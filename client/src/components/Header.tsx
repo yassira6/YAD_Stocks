@@ -41,6 +41,17 @@ export function Header({ view }: Props) {
             >
               {t.navStocks}
             </button>
+            {user && (
+              <button
+                type="button"
+                onClick={() => navigateTo("watchlist")}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                  view === "watchlist" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
+                }`}
+              >
+                {t.navWatchlist}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigateTo("alerts")}

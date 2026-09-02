@@ -4,8 +4,8 @@ import { useAuth } from "../lib/AuthContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { formatDateTime, formatPrice } from "../lib/format";
 import { defaultCurrency, detectMarket } from "../lib/markets";
-import { sendUserEmail, sendUserPush, fetchActiveSignals, triggerSignalScan } from "../lib/api";
-import type { AdminStatus, CompanySignal, PriceAlert, User } from "../types";
+import { sendUserEmail, sendUserPush, fetchActiveSignals, triggerSignalScan, fetchAdminUserDetail } from "../lib/api";
+import type { AdminStatus, AdminUserDetail, CompanySignal, PriceAlert, User } from "../types";
 
 function StatusPill({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {
   return (
@@ -153,6 +153,144 @@ function SendMessageModal({ user, onClose }: { user: User; onClose: () => void }
   );
 }
 
+function UserDetailModal({ userId, alerts, onClose }: { userId: string; alerts: PriceAlert[]; onClose: () => void }) {
+  const { t, lang } = useLanguage();
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchAdminUserDetail(userId)
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const userAlerts = detail ? alerts.filter((a) => a.userEmail === detail.email) : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/40 sm:p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {loading && <p className="text-sm text-ink-300">{t.loading}</p>}
+        {error && <p className="text-sm text-bear">{error}</p>}
+
+        {detail && (
+          <>
+            <div className="flex items-center gap-3">
+              {detail.picture ? (
+                <img src={detail.picture} alt="" className="h-10 w-10 rounded-full" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-700 text-sm font-bold text-ink-200">
+                  {(detail.name || detail.email)[0]?.toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-ink-100">{detail.name || "—"}</h3>
+                <p className="truncate text-xs text-ink-300">{detail.email}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-ink-300">
+              <span className="rounded-full bg-ink-700 px-2.5 py-1 font-semibold text-ink-200">{detail.provider}</span>
+              {detail.isAdmin && (
+                <span className="rounded-full bg-gold-500/15 px-2.5 py-1 font-semibold text-gold-400">{t.navAdmin}</span>
+              )}
+              <span>
+                {t.adminJoined}: {formatDateTime(detail.createdAt, lang)}
+              </span>
+              <span>
+                {t.adminLastLogin}: {formatDateTime(detail.lastLoginAt, lang)}
+              </span>
+            </div>
+
+            <div className="mt-5">
+              <h4 className="text-sm font-semibold text-ink-100">{t.adminUserSignalPrefs}</h4>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                <StatusPill ok={detail.signalSubscription.emailEnabled} yes={`${t.adminChannelEmail}: ${t.enabledLabel}`} no={`${t.adminChannelEmail}: ${t.disabledLabel}`} />
+                <StatusPill ok={detail.signalSubscription.pushEnabled} yes={`${t.adminChannelPush}: ${t.enabledLabel}`} no={`${t.adminChannelPush}: ${t.disabledLabel}`} />
+                <span className="rounded-full bg-ink-700 px-2.5 py-1 font-semibold text-ink-200">
+                  {t.signalsScopeLabel}: {detail.signalSubscription.scope === "watchlist" ? t.signalsScopeWatchlist : t.signalsScopeAll}
+                </span>
+                <StatusPill ok={detail.hasPushRegistration} yes={t.adminHasPushDevice} no={t.adminNoPushDevice} />
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <h4 className="text-sm font-semibold text-ink-100">
+                {t.watchlistTitle} ({detail.watchlist.length})
+              </h4>
+              {detail.watchlist.length === 0 ? (
+                <p className="mt-2 text-xs text-ink-300">{t.watchlistEmpty}</p>
+              ) : (
+                <ul className="mt-2 divide-y divide-ink-800">
+                  {detail.watchlist.map((w) => (
+                    <li key={w.code} className="flex items-center justify-between gap-2 py-2 text-sm">
+                      <span className="min-w-0 truncate text-ink-100">
+                        {lang === "ar" ? w.nameAr || w.nameEn || w.code : w.nameEn || w.code}{" "}
+                        <span className="font-mono text-xs text-brand-300">({w.code})</span>
+                      </span>
+                      {w.alertsEnabled && (
+                        <span className="shrink-0 rounded-full bg-brand-500/15 px-2 py-0.5 text-[11px] font-semibold text-brand-300">
+                          {t.watchlistAlertsLabel}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <h4 className="text-sm font-semibold text-ink-100">
+                {t.adminAlertsTitle} ({userAlerts.length})
+              </h4>
+              {userAlerts.length === 0 ? (
+                <p className="mt-2 text-xs text-ink-300">{t.alertsEmpty}</p>
+              ) : (
+                <ul className="mt-2 divide-y divide-ink-800">
+                  {userAlerts.map((a) => (
+                    <li key={a.id} className="flex items-center justify-between gap-2 py-2 text-sm text-ink-100">
+                      <span className="font-mono text-xs text-brand-300">{a.code}</span>
+                      <span>
+                        {a.direction} @ {formatPrice(a.targetPrice, lang, defaultCurrency(detectMarket(a.code)))}
+                      </span>
+                      <span className="text-xs text-ink-300">{a.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-full border border-ink-600 px-4 py-2 text-sm font-semibold text-ink-200 transition hover:border-ink-500"
+          >
+            {t.cancel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const { t, lang } = useLanguage();
   const { user, loading: authLoading } = useAuth();
@@ -164,6 +302,7 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [emailTarget, setEmailTarget] = useState<User | null>(null);
+  const [viewTargetId, setViewTargetId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ scanned: number; newSignals: number } | null>(null);
 
@@ -309,13 +448,22 @@ export function AdminPage() {
                   </td>
                   <td className="py-2.5 text-xs text-ink-300/80">{formatDateTime(u.lastLoginAt, lang)}</td>
                   <td className="py-2.5 ps-3">
-                    <button
-                      type="button"
-                      onClick={() => setEmailTarget(u)}
-                      className="cursor-pointer rounded-full border border-ink-600 px-3 py-1 text-xs font-semibold text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
-                    >
-                      {t.adminSendMessage}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setViewTargetId(u.id)}
+                        className="cursor-pointer rounded-full border border-ink-600 px-3 py-1 text-xs font-semibold text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
+                      >
+                        {t.adminViewUser}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEmailTarget(u)}
+                        className="cursor-pointer rounded-full border border-ink-600 px-3 py-1 text-xs font-semibold text-ink-200 transition hover:border-brand-500 hover:text-brand-300"
+                      >
+                        {t.adminSendMessage}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -325,6 +473,7 @@ export function AdminPage() {
       </div>
 
       {emailTarget && <SendMessageModal user={emailTarget} onClose={() => setEmailTarget(null)} />}
+      {viewTargetId && <UserDetailModal userId={viewTargetId} alerts={alerts} onClose={() => setViewTargetId(null)} />}
 
       <div className="rounded-3xl border border-ink-700 bg-ink-900 p-5 shadow-xl shadow-black/20 sm:p-6">
         <h3 className="text-base font-semibold text-ink-100">{t.adminAlertsTitle}</h3>

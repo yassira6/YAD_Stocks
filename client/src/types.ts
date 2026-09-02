@@ -72,6 +72,21 @@ export interface Analysis {
   };
 }
 
+export type SevenDayCall = "buy" | "sell" | "keep";
+
+export interface SevenDayForecast {
+  horizonDays: number;
+  call: SevenDayCall;
+  callLabel: { en: string; ar: string };
+  currentPrice: number;
+  projectedPrice: number;
+  projectedChangePct: number;
+  buyPrice: number;
+  sellPrice: number;
+  dailyVolatilityPct: number;
+  note: { en: string; ar: string };
+}
+
 export interface QuoteResponse {
   symbol: string;
   code: string;
@@ -83,6 +98,7 @@ export interface QuoteResponse {
   regularMarketTime: number;
   series: Bar[];
   analysis: Analysis;
+  sevenDayForecast: SevenDayForecast | null;
   dataSource: "live" | "demo";
   liveError: string | null;
   marketOpen: boolean;
@@ -139,9 +155,12 @@ export interface AdminStatus {
   signalSubscribers: { email: number; push: number };
 }
 
+export type SignalScope = "all" | "watchlist";
+
 export interface SignalSubscription {
   emailEnabled: boolean;
   pushEnabled: boolean;
+  scope: SignalScope;
   lang: "en" | "ar";
   hasPushRegistration: boolean;
   pushConfigured: boolean;
@@ -156,4 +175,19 @@ export interface CompanySignal {
   lastNotifiedVerdict: Verdict | null;
   lastNotifiedAt: number | null;
   updatedAt: number;
+}
+
+export interface WatchlistItem {
+  code: string;
+  nameEn: string | null;
+  nameAr: string | null;
+  market: "TASI" | "US" | null;
+  alertsEnabled: boolean;
+  addedAt: number;
+}
+
+export interface AdminUserDetail extends User {
+  watchlist: WatchlistItem[];
+  signalSubscription: SignalSubscription;
+  hasPushRegistration: boolean;
 }

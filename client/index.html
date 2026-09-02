@@ -40,6 +40,31 @@
           /* ignore */
         }
       })();
+      // Same idea for language/direction: a saved explicit choice, or the
+      // device/browser locale on a first visit, applied before paint so the
+      // page doesn't flash from the hardcoded ar/rtl above to the real value
+      // once LanguageProvider mounts.
+      (function () {
+        try {
+          var lang = localStorage.getItem("myshare-lang");
+          if (lang !== "en" && lang !== "ar") {
+            lang = null;
+            var candidates = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]) || [];
+            for (var i = 0; i < candidates.length; i++) {
+              var primary = (candidates[i] || "").toLowerCase().split("-")[0];
+              if (primary === "en") { lang = "en"; break; }
+              if (primary === "ar") { lang = "ar"; break; }
+            }
+          }
+          if (lang === "en") {
+            document.documentElement.lang = "en";
+            document.documentElement.dir = "ltr";
+          }
+          // lang === "ar" needs no change — that's already the markup default above.
+        } catch (e) {
+          /* ignore */
+        }
+      })();
     </script>
   </head>
   <body>

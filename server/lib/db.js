@@ -100,15 +100,31 @@ db.exec(`
   );
 
   -- One row per user: whether they want email/push notifications for
-  -- market-wide strong-buy/strong-sell signals (a separate opt-in from the
-  -- per-stock price alerts in the 'alerts' table above).
+  -- strong-buy/strong-sell signals (a separate opt-in from the per-stock
+  -- price alerts in the 'alerts' table above), and whether that covers
+  -- every tracked company ('all') or only their watchlist ('watchlist' —
+  -- see watchlist_items below, gated further by each item's own
+  -- alerts_enabled so a user can scope down to specific stocks).
   CREATE TABLE IF NOT EXISTS signal_subscriptions (
     user_id TEXT PRIMARY KEY,
     email_enabled INTEGER NOT NULL DEFAULT 0,
     push_enabled INTEGER NOT NULL DEFAULT 0,
+    scope TEXT NOT NULL DEFAULT 'all',
     lang TEXT NOT NULL DEFAULT 'ar',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
+  );
+
+  -- A user's watchlist. alerts_enabled scopes the signal_subscriptions
+  -- 'watchlist' mode down further to specific stocks within it — adding a
+  -- stock doesn't opt it into alerts by itself.
+  CREATE TABLE IF NOT EXISTS watchlist_items (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    alerts_enabled INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    UNIQUE(user_id, code)
   );
 
   -- Web Push subscription objects registered by the browser. A user can have
@@ -139,6 +155,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_companies_updated ON companies(updated_at);
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist_items(user_id);
+  CREATE INDEX IF NOT EXISTS idx_watchlist_code ON watchlist_items(code);
 `);
 
 // --- Lightweight migrations -------------------------------------------------
@@ -160,5 +178,6 @@ ensureColumn("companies", "market", "market TEXT NOT NULL DEFAULT 'TASI'");
 ensureColumn("alerts", "push_enabled", "push_enabled INTEGER NOT NULL DEFAULT 0");
 ensureColumn("alerts", "push_sent", "push_sent INTEGER");
 ensureColumn("alerts", "push_error", "push_error TEXT");
+ensureColumn("signal_subscriptions", "scope", "scope TEXT NOT NULL DEFAULT 'all'");
 
 export { DB_PATH };

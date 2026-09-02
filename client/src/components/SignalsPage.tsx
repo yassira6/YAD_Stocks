@@ -31,7 +31,9 @@ export function SignalsPage() {
         setSub(subscription);
         setVapidKey(vapid.publicKey);
       })
-      .catch(() => setSub({ emailEnabled: false, pushEnabled: false, lang, hasPushRegistration: false, pushConfigured: false }))
+      .catch(() =>
+        setSub({ emailEnabled: false, pushEnabled: false, scope: "all", lang, hasPushRegistration: false, pushConfigured: false })
+      )
       .finally(() => setLoading(false));
   }, [user, lang]);
 
@@ -44,6 +46,7 @@ export function SignalsPage() {
       const updated = await updateSignalSubscription({
         emailEnabled: merged.emailEnabled,
         pushEnabled: merged.pushEnabled,
+        scope: merged.scope,
         lang,
       });
       setSub(updated);
@@ -137,6 +140,40 @@ export function SignalsPage() {
                 </p>
               </div>
               <Toggle checked={sub.pushEnabled} onChange={onTogglePush} disabled={saving || !!pushBlockedReason || !sub.pushConfigured} />
+            </div>
+
+            <div className="h-px bg-ink-800" />
+
+            <div>
+              <p className="text-sm font-semibold text-ink-100">{t.signalsScopeLabel}</p>
+              <p className="mt-0.5 text-xs text-ink-300">{t.signalsScopeHint}</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => save({ scope: "all" })}
+                  disabled={saving}
+                  className={`rounded-2xl border px-4 py-3 text-start text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    sub.scope === "all"
+                      ? "border-brand-500 bg-brand-500/10 text-brand-300"
+                      : "border-ink-700 bg-ink-850 text-ink-200 hover:border-ink-500"
+                  }`}
+                >
+                  {t.signalsScopeAll}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => save({ scope: "watchlist" })}
+                  disabled={saving}
+                  className={`rounded-2xl border px-4 py-3 text-start text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    sub.scope === "watchlist"
+                      ? "border-brand-500 bg-brand-500/10 text-brand-300"
+                      : "border-ink-700 bg-ink-850 text-ink-200 hover:border-ink-500"
+                  }`}
+                >
+                  {t.signalsScopeWatchlist}
+                </button>
+              </div>
+              {sub.scope === "watchlist" && <p className="mt-2 text-xs text-ink-300">{t.signalsScopeWatchlistHint}</p>}
             </div>
 
             {saving && <p className="text-xs text-ink-300">{t.signalsSaving}</p>}

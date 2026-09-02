@@ -8,10 +8,17 @@ import { recordAdminEmail, listAdminEmailsForUser } from "./adminEmails.js";
 import { getPriceSourceName } from "./priceProvider.js";
 import { isMarketOpen } from "./marketHours.js";
 import { isPushConfigured, sendPush } from "./pushNotifications.js";
-import { countSignalSubscribers, listPushSubscriptionsForUser, removePushSubscription } from "./signalSubscriptions.js";
+import {
+  countSignalSubscribers,
+  listPushSubscriptionsForUser,
+  removePushSubscription,
+  getSignalSubscription,
+  hasPushRegistration,
+} from "./signalSubscriptions.js";
 import { listActiveSignals } from "./companySignals.js";
 import { scanForSignalsOnce } from "./signalScanner.js";
 import { recordAdminPush, listAdminPushesForUser } from "./adminPushes.js";
+import { listWatchlistForUserAdmin } from "./watchlist.js";
 
 export const adminRouter = express.Router();
 adminRouter.use(requireAdmin);
@@ -128,6 +135,21 @@ adminRouter.post("/users/:id/push", async (req, res) => {
 
 adminRouter.get("/users/:id/pushes", (req, res) => {
   res.json(listAdminPushesForUser(req.params.id));
+});
+
+// Full detail for one user, for the Admin page's "View" action: their
+// watchlist and their strong-signal subscription/scope, alongside the
+// profile fields already in the /users list and the alerts already in
+// /alerts (the client filters that list by email rather than re-fetching).
+adminRouter.get("/users/:id", (req, res) => {
+  const target = getUserById(req.params.id);
+  if (!target) return res.status(404).json({ error: "User not found." });
+  res.json({
+    ...target,
+    watchlist: listWatchlistForUserAdmin(target.id),
+    signalSubscription: getSignalSubscription(target.id),
+    hasPushRegistration: hasPushRegistration(target.id),
+  });
 });
 
 // The analysis currently being fanned out to signal subscribers — every

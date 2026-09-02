@@ -12,6 +12,21 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 const STORAGE_KEY = "myshare-lang";
 
+/** Falls back to Arabic if the browser doesn't clearly prefer English or Arabic. */
+function detectBrowserLang(): Lang {
+  try {
+    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+    for (const l of candidates) {
+      const primary = l?.toLowerCase().split("-")[0];
+      if (primary === "en") return "en";
+      if (primary === "ar") return "ar";
+    }
+  } catch {
+    // ignore (e.g. navigator unavailable)
+  }
+  return "ar";
+}
+
 function detectInitialLang(): Lang {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -19,8 +34,9 @@ function detectInitialLang(): Lang {
   } catch {
     // ignore storage access issues (private browsing, etc.)
   }
-  // Arabic is the app's default; an explicit toggle (persisted above) is the only way to change it.
-  return "ar";
+  // No explicit choice saved yet — follow the device/browser locale. Once the
+  // user toggles the language (persisted above), that choice always wins.
+  return detectBrowserLang();
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
