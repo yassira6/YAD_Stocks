@@ -1,4 +1,6 @@
 import { useLanguage } from "../i18n/LanguageContext";
+import { useAuth } from "../lib/AuthContext";
+import { WatchlistButton } from "./WatchlistButton";
 import { formatDateTime, formatPercent, formatPrice } from "../lib/format";
 import type { Company, QuoteResponse } from "../types";
 
@@ -12,6 +14,7 @@ interface Props {
 
 export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
   const { t, lang } = useLanguage();
+  const { user } = useAuth();
   const change = quote.regularMarketPrice - quote.previousClose;
   const changePct = quote.previousClose ? change / quote.previousClose : 0;
   const isUp = change >= 0;
@@ -28,6 +31,7 @@ export function PriceHeader({ quote, company, refreshing, onRefresh }: Props) {
             <span className="rounded-lg bg-ink-700 px-2 py-0.5 font-mono text-xs font-semibold text-brand-300">
               {quote.code}
             </span>
+            {user && <WatchlistButton code={quote.code} variant="pill" />}
           </div>
           {sector && <p className="mt-1 text-sm text-ink-300">{sector}</p>}
         </div>

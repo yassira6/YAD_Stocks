@@ -315,12 +315,19 @@ feed — see the mechanics below.
 The **Watchlist** nav tab (signed-in users only) is a personal list of
 companies, independent of price alerts:
 
-- **Adding a stock**, two ways: the **+** button next to any search result
-  (search bar on the home page, Alerts page, or the Watchlist page's own
-  search box) — it toggles to a checkmark once added, and back if you click
-  it again to remove; or the small search box directly on the Watchlist
-  page.
-- **Removing** a stock is a button on its row in the watchlist list.
+- **Adding a stock**, two ways: the **+ Add to watchlist** pill next to the
+  company name on its stock page (`client/src/components/PriceHeader.tsx`,
+  via the shared `WatchlistButton` component) — the obvious place once
+  you've actually navigated to a stock, toggling to **✓ In watchlist**; or
+  the small search box directly on the Watchlist page (which also has the
+  same button, in a compact icon form, on every dropdown result — same
+  `WatchlistButton`, `variant="icon"`).
+- **Removing** a stock is a button on its row in the watchlist list, or the
+  same toggle on its stock page.
+- **Live prices in the list**: the Watchlist page fetches a real quote
+  (`GET /api/quote/:code`, same endpoint and cache as the stock page) for
+  every item once loaded, showing price, day change %, and a "Market
+  Closed" note per row — same live-vs-demo-data rules as everywhere else.
 - **Scoping strong-buy/sell signal alerts to the watchlist**: on the
   Signals page (see above), the "Which stocks to notify me about" choice —
   **All tracked stocks** or **Only my watchlist** — is a new `scope` on the

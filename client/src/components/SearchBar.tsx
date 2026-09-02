@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useCompanies } from "../lib/CompaniesContext";
 import { useAuth } from "../lib/AuthContext";
-import { useWatchlist } from "../lib/WatchlistContext";
+import { WatchlistButton } from "./WatchlistButton";
 import { searchCompanies, type SearchResult } from "../lib/search";
 
 interface Props {
@@ -10,53 +10,6 @@ interface Props {
   /** Hides the per-result watchlist +/✓ button — used inside the Watchlist page's
    * own add-search, where every result is about to be added via a different flow. */
   hideWatchlistButton?: boolean;
-}
-
-function WatchlistToggleButton({ code }: { code: string }) {
-  const { t } = useLanguage();
-  const { codes, add, remove } = useWatchlist();
-  const [busy, setBusy] = useState(false);
-  const inWatchlist = codes.has(code);
-
-  async function onClick(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (inWatchlist) await remove(code);
-      else await add(code);
-    } catch {
-      // best-effort — the button just reflects context state, which stays unchanged on failure
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      aria-label={inWatchlist ? t.watchlistRemove : t.watchlistAdd}
-      title={inWatchlist ? t.watchlistRemove : t.watchlistAdd}
-      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
-        inWatchlist
-          ? "border-brand-500 bg-brand-500/15 text-brand-300"
-          : "border-ink-600 text-ink-300 hover:border-brand-500 hover:text-brand-300"
-      }`}
-    >
-      {inWatchlist ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
-      )}
-    </button>
-  );
 }
 
 export function SearchBar({ onSelect, hideWatchlistButton }: Props) {
@@ -195,7 +148,7 @@ export function SearchBar({ onSelect, hideWatchlistButton }: Props) {
                       <span className="rounded-lg bg-ink-700 px-2 py-1 font-mono text-xs font-semibold text-brand-300">
                         {r.code}
                       </span>
-                      {user && !hideWatchlistButton && <WatchlistToggleButton code={r.code} />}
+                      {user && !hideWatchlistButton && <WatchlistButton code={r.code} stopPropagation />}
                     </span>
                   </button>
                 </li>
