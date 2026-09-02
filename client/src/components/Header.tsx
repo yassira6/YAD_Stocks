@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useAuth } from "../lib/AuthContext";
 import { useTheme } from "../lib/ThemeContext";
@@ -13,83 +13,71 @@ export function Header({ view }: Props) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
+
+  const navItems: { view: View; label: string }[] = [
+    { view: "stock", label: t.navStocks },
+    ...(user ? [{ view: "watchlist" as View, label: t.navWatchlist }] : []),
+    { view: "alerts", label: t.navAlerts },
+    { view: "signals", label: t.navSignals },
+    ...(user?.isAdmin ? [{ view: "admin" as View, label: t.navAdmin }] : []),
+  ];
+
+  // Close the mobile nav dropdown on outside click.
+  useEffect(() => {
+    if (!navOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setNavOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [navOpen]);
+
+  const goTo = (v: View) => {
+    navigateTo(v);
+    setNavOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-ink-700/60 bg-ink-950/85 backdrop-blur supports-[backdrop-filter]:bg-ink-950/70">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <button
           type="button"
           onClick={() => navigateTo("stock")}
-          className="flex items-center gap-3 rounded-xl text-start transition hover:opacity-90"
+          className="flex min-w-0 shrink items-center gap-3 rounded-xl text-start transition hover:opacity-90"
           aria-label={t.appName}
         >
-          <img src="/icon.svg" alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-brand-900/40 sm:h-10 sm:w-10" />
-          <div className="leading-tight">
-            <h1 className="text-base font-bold tracking-tight text-ink-100 sm:text-lg">{t.appName}</h1>
-            <p className="hidden text-xs text-ink-300 sm:block">{t.tagline}</p>
+          <img src="/icon.svg" alt="" className="h-9 w-9 shrink-0 rounded-xl shadow-lg shadow-brand-900/40 sm:h-10 sm:w-10" />
+          <div className="min-w-0 leading-tight">
+            <h1 className="truncate text-base font-bold tracking-tight text-ink-100 sm:text-lg">{t.appName}</h1>
+            <p className="hidden truncate text-xs text-ink-300 lg:block">{t.tagline}</p>
           </div>
         </button>
 
-        <div className="flex items-center gap-2">
-          <nav className="flex items-center gap-1 rounded-full border border-ink-700 bg-ink-850/70 p-1">
-            <button
-              type="button"
-              onClick={() => navigateTo("stock")}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                view === "stock" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
-              }`}
-            >
-              {t.navStocks}
-            </button>
-            {user && (
+        <div className="flex shrink-0 items-center gap-2">
+          <nav className="hidden items-center gap-1 rounded-full border border-ink-700 bg-ink-850/70 p-1 lg:flex">
+            {navItems.map((item) => (
               <button
+                key={item.view}
                 type="button"
-                onClick={() => navigateTo("watchlist")}
+                onClick={() => navigateTo(item.view)}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                  view === "watchlist" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
+                  view === item.view ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
                 }`}
               >
-                {t.navWatchlist}
+                {item.label}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => navigateTo("alerts")}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                view === "alerts" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
-              }`}
-            >
-              {t.navAlerts}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateTo("signals")}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                view === "signals" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
-              }`}
-            >
-              {t.navSignals}
-            </button>
-            {user?.isAdmin && (
-              <button
-                type="button"
-                onClick={() => navigateTo("admin")}
-                className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                  view === "admin" ? "bg-brand-600 text-white" : "text-ink-200 hover:text-ink-100"
-                }`}
-              >
-                {t.navAdmin}
-              </button>
-            )}
+            ))}
           </nav>
 
           <button
             type="button"
             onClick={toggleLang}
-            className="flex items-center gap-1.5 rounded-full border border-ink-600 bg-ink-800/70 px-3 py-1.5 text-sm font-medium text-ink-100 transition hover:border-brand-500 hover:text-brand-300 active:scale-95"
+            className="flex items-center gap-1.5 rounded-full border border-ink-600 bg-ink-800/70 px-2.5 py-1.5 text-sm font-medium text-ink-100 transition hover:border-brand-500 hover:text-brand-300 active:scale-95 sm:px-3"
             aria-label="Switch language"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="opacity-70">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-70">
               <path
                 d="M4 5h9M8.5 3v2m0 0c0 4-1.5 8-5.5 10M6 10c1 2.5 3 4 6 5M14 21l4-9 4 9M15.5 18h5"
                 stroke="currentColor"
@@ -98,7 +86,7 @@ export function Header({ view }: Props) {
                 strokeLinejoin="round"
               />
             </svg>
-            {lang === "en" ? "العربية" : "English"}
+            <span className="hidden sm:inline">{lang === "en" ? "العربية" : "English"}</span>
           </button>
 
           <button
@@ -134,17 +122,20 @@ export function Header({ view }: Props) {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-full border border-ink-600 bg-ink-800/70 py-1 ps-1 pe-3 text-sm font-medium text-ink-100 transition hover:border-brand-500"
+                onClick={() => {
+                  setNavOpen(false);
+                  setMenuOpen((o) => !o);
+                }}
+                className="flex items-center gap-2 rounded-full border border-ink-600 bg-ink-800/70 py-1 ps-1 pe-2.5 text-sm font-medium text-ink-100 transition hover:border-brand-500 sm:pe-3"
               >
                 {user.picture ? (
-                  <img src={user.picture} alt="" className="h-6 w-6 rounded-full" referrerPolicy="no-referrer" />
+                  <img src={user.picture} alt="" className="h-6 w-6 shrink-0 rounded-full" referrerPolicy="no-referrer" />
                 ) : (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
                     {(user.name || user.email)[0]?.toUpperCase()}
                   </span>
                 )}
-                <span className="max-w-[10ch] truncate">{user.name || user.email}</span>
+                <span className="hidden max-w-[10ch] truncate sm:inline">{user.name || user.email}</span>
               </button>
               {menuOpen && (
                 <div className="absolute end-0 z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 shadow-2xl shadow-black/50">
@@ -168,11 +159,50 @@ export function Header({ view }: Props) {
             <button
               type="button"
               onClick={() => navigateTo("login")}
-              className="rounded-full bg-brand-600 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-500"
+              className="rounded-full bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-500 sm:px-3.5"
             >
               {t.navLogin}
             </button>
           )}
+
+          <div className="relative lg:hidden" ref={navRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setNavOpen((o) => !o);
+              }}
+              className="flex items-center justify-center rounded-full border border-ink-600 bg-ink-800/70 p-2 text-ink-100 transition hover:border-brand-500 hover:text-brand-300 active:scale-95"
+              aria-label={navOpen ? t.menuCloseLabel : t.menuOpenLabel}
+              aria-expanded={navOpen}
+            >
+              {navOpen ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 5l14 14M19 5 5 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+            {navOpen && (
+              <nav className="absolute end-0 z-40 mt-2 w-48 overflow-hidden rounded-2xl border border-ink-600 bg-ink-850 p-1.5 shadow-2xl shadow-black/50">
+                {navItems.map((item) => (
+                  <button
+                    key={item.view}
+                    type="button"
+                    onClick={() => goTo(item.view)}
+                    className={`block w-full rounded-xl px-3.5 py-2.5 text-start text-sm font-medium transition ${
+                      view === item.view ? "bg-brand-600 text-white" : "text-ink-100 hover:bg-ink-800"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
         </div>
       </div>
     </header>
